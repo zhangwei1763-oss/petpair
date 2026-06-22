@@ -4,7 +4,9 @@ import { currentUser } from '../data/mockData';
 import { getMyPets, createPet, updatePet, deletePet } from '../api/pets';
 import { isSupabaseConfigured } from '../api/client';
 import PetProfileForm from '../components/PetProfileForm';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import AIPersonalityAnalyzer from '../components/AIPersonalityAnalyzer';
+import type { AIPersonalityAnalysis } from '../api/ai';
+import { Plus, Edit, Trash2, Sparkles } from 'lucide-react';
 
 const personalityLabelMap: Record<string, string> = {
   lively: '活泼',
@@ -19,6 +21,7 @@ export default function PetProfilePage() {
   const [editingPet, setEditingPet] = useState<PetProfile | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
+  const [analyzingPetId, setAnalyzingPetId] = useState<string | null>(null);
 
   // 从 API 加载宠物列表
   useEffect(() => {
@@ -92,6 +95,49 @@ export default function PetProfilePage() {
     }
   };
 
+  const handleAIAnalysisComplete = (petId: string, analysis: AIPersonalityAnalysis) => {
+    // 将 AI 分析结果更新到宠物档案
+    setPets((prev) =>
+      prev.map((p) => {
+        if (p.id !== petId) return p;
+
+        // 将中文标签映射为英文 key
+        const tagMap: Record<string, string> = {
+          '活泼': 'lively',
+          '温顺': 'gentle',
+          '胆小': 'timid',
+          '独立': 'independent',
+          '粘人': 'clingy',
+          '友好': 'lively',
+          '好奇': 'lively',
+          '警觉': 'independent',
+          '稳重': 'gentle',
+          '调皮': 'lively',
+          '安静': 'gentle',
+          '聪明': 'independent',
+          '忠诚': 'clingy',
+          '勇敢': 'lively',
+          '敏感': 'timid',
+        };
+
+        const mappedTags = analysis.personalityTags
+          .map((tag) => tagMap[tag] || 'lively')
+          .filter((tag): tag is ('lively' | 'gentle' | 'timid' | 'independent' | 'clingy') =>
+            ['lively', 'gentle', 'timid', 'independent', 'clingy'].includes(tag)
+          );
+
+        return {
+          ...p,
+          personalityTags: mappedTags.length > 0 ? mappedTags : ['lively'],
+          energyLevel: analysis.energyLevel,
+          bio: analysis.description,
+        };
+      })
+    );
+    showSuccess('AI 分析结果已应用到档案！');
+    setAnalyzingPetId(null);
+  };
+
   return (
     <div className="pet-profile-page container">
       <div className="pet-profile-page__header">
@@ -149,6 +195,22 @@ export default function PetProfilePage() {
                   编辑
                 </button>
                 <button
+                  className="btn btn-sm btn-outline"
+                  style={{
+                    background: 'linear-gradient(135deg, #9b7edc 0%, #c4785a 100%)',
+                    color: '#fff',
+                    border: 'none',
+                  }}
+                  onClick={() => {
+                    setAnalyzingPetId(analyzingPetId === pet.id ? null : pet.id);
+                    setEditingPet(null);
+                    setIsAdding(false);
+                  }}
+                >
+                  <Sparkles size={14} />
+                  AI分析
+                </button>
+                <button
                   className="btn btn-sm btn-danger"
                   onClick={() => handleDelete(pet.id)}
                 >
@@ -169,6 +231,20 @@ export default function PetProfilePage() {
                   initialData={editingPet}
                   onSubmit={handleSave}
                   submitLabel="保存"
+                />
+              </div>
+            )}
+
+            {/* AI Personality Analyzer */}
+            {analyzingPetId === pet.id && (
+              <div className="pet-profile-page__form-wrapper">
+                <AIPersonalityAnalyzer
+                  petName={pet.name}
+                  species={pet.species}
+                  existingPhotos={pet.photos}
+                  onAnalysisComplete={(analysis) =>
+                    handleAIAnalysisComplete(pet.id, analysis)
+                  }
                 />
               </div>
             )}
