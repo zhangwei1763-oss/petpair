@@ -367,7 +367,13 @@ export default function MapExplorePage() {
                     } as React.CSSProperties}
                     onClick={() => setSelectedPetId(pet.id)}
                   >
-                    <div className="map-explore-page__marker-dot" />
+                    <div
+                      className="map-explore-page__marker-avatar"
+                      style={{
+                        backgroundImage: `url(${pet.photos[0]})`,
+                        borderColor: markerColor,
+                      }}
+                    />
                     {isHighMatch && (
                       <div className="map-explore-page__marker-score">
                         {matchInfo!.score}
@@ -1052,25 +1058,28 @@ export default function MapExplorePage() {
           border: none;
           padding: 0;
         }
-        .map-explore-page__marker-dot {
-          width: 28px;
-          height: 28px;
+        .map-explore-page__marker-avatar {
+          width: 32px;
+          height: 32px;
           border-radius: 50%;
-          background: var(--marker-color);
-          border: 3px solid #fff;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+          background-size: cover;
+          background-position: center;
+          border: 2.5px solid;
+          border-color: var(--marker-color);
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
           transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+          background-color: var(--marker-color);
         }
-        .map-explore-page__marker:hover .map-explore-page__marker-dot {
-          transform: scale(1.2);
-          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-        }
-        .map-explore-page__marker--selected .map-explore-page__marker-dot {
-          transform: scale(1.3);
+        .map-explore-page__marker:hover .map-explore-page__marker-avatar {
+          transform: scale(1.15);
           box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
         }
+        .map-explore-page__marker--selected .map-explore-page__marker-avatar {
+          transform: scale(1.25);
+          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+        }
         /* 高匹配度标记脉动动画 */
-        .map-explore-page__marker--high-match .map-explore-page__marker-dot {
+        .map-explore-page__marker--high-match .map-explore-page__marker-avatar {
           box-shadow: 0 0 0 0 var(--marker-color);
           animation: map-explore-page__marker-pulse 1.5s ease-out infinite;
         }
