@@ -327,23 +327,43 @@ export default function MapExplorePage() {
       {/* ============================== TAB: 地图模式 ============================== */}
       {activeTab === 'map' && (
         <>
-          {/* 模拟地图 */}
+          {/* 地图区域 - 使用真实地图背景图片增强真实感 */}
           <div className="map-explore-page__map">
             <div className="map-explore-page__map-bg">
-              <div className="map-explore-page__road map-explore-page__road--h1" />
-              <div className="map-explore-page__road map-explore-page__road--h2" />
-              <div className="map-explore-page__road map-explore-page__road--v1" />
-              <div className="map-explore-page__road map-explore-page__road--v2" />
-              <div className="map-explore-page__road map-explore-page__road--v3" />
-              <div className="map-explore-page__park" />
-              <div className="map-explore-page__park map-explore-page__park--2" />
-              <div className="map-explore-page__building" style={{ left: '10%', top: '10%' }} />
-              <div className="map-explore-page__building" style={{ left: '85%', top: '15%' }} />
-              <div className="map-explore-page__building" style={{ left: '42%', top: '12%' }} />
-              <div className="map-explore-page__building" style={{ left: '70%', top: '85%' }} />
+              {/* 真实地图背景 - 使用 OpenStreetMap 静态图 */}
+              <div 
+                className="map-explore-page__map-tile"
+                style={{
+                  backgroundImage: `url(https://tile.openstreetmap.org/12/3375/1552.png)`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                }}
+              />
+              {/* 地图覆盖层 - 半透明遮罩让标记更清晰 */}
+              <div className="map-explore-page__map-overlay" />
+              
+              {/* 道路标注 */}
+              <div className="map-explore-page__map-label" style={{ left: '15%', top: '20%' }}>
+                滨江大道
+              </div>
+              <div className="map-explore-page__map-label" style={{ left: '55%', top: '15%' }}>
+                世纪公园
+              </div>
+              <div className="map-explore-page__map-label" style={{ left: '25%', top: '55%' }}>
+                宠物友好广场
+              </div>
+              <div className="map-explore-page__map-label" style={{ left: '70%', top: '45%' }}>
+                绿地公园
+              </div>
+              <div className="map-explore-page__map-label" style={{ left: '45%', top: '75%' }}>
+                 Riverside Park
+              </div>
+
+              {/* 我的位置 */}
               <div className="map-explore-page__my-location">
                 <div className="map-explore-page__my-location-dot" />
                 <div className="map-explore-page__my-location-pulse" />
+                <span className="map-explore-page__my-location-label">我的位置</span>
               </div>
 
               {/* 宠物标记 - 按匹配度着色 */}
@@ -383,6 +403,31 @@ export default function MapExplorePage() {
                   </button>
                 );
               })}
+
+              {/* 地图控件 */}
+              <div className="map-explore-page__map-controls">
+                <button className="map-explore-page__map-control-btn" title="放大">+</button>
+                <button className="map-explore-page__map-control-btn" title="缩小">-</button>
+                <button className="map-explore-page__map-control-btn" title="定位">
+                  <Navigation size={14} />
+                </button>
+              </div>
+
+              {/* 地图图例 */}
+              <div className="map-explore-page__map-legend">
+                <div className="map-explore-page__map-legend-item">
+                  <span className="map-explore-page__map-legend-dot" style={{ background: '#52c41a' }} />
+                  <span>完美匹配 (90+)</span>
+                </div>
+                <div className="map-explore-page__map-legend-item">
+                  <span className="map-explore-page__map-legend-dot" style={{ background: '#1890ff' }} />
+                  <span>高度匹配 (70+)</span>
+                </div>
+                <div className="map-explore-page__map-legend-item">
+                  <span className="map-explore-page__map-legend-dot" style={{ background: '#fa8c16' }} />
+                  <span>一般匹配 (50+)</span>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -951,66 +996,109 @@ export default function MapExplorePage() {
           position: relative;
           width: 100%;
           height: 400px;
-          background:
-            linear-gradient(135deg, #c8e6c9 0%, #a5d6a7 20%, #e8f5e9 35%, #b3e5fc 50%, #e1f5fe 65%, #c8e6c9 80%, #dcedc8 100%);
           overflow: hidden;
+          background: #e8e8e8;
         }
 
-        /* Simulated roads */
-        .map-explore-page__road {
+        /* Real map tile */
+        .map-explore-page__map-tile {
           position: absolute;
-          background: rgba(255, 255, 255, 0.6);
-          border-radius: 2px;
-        }
-        .map-explore-page__road--h1 {
-          left: 0; right: 0; top: 30%;
-          height: 6px;
-        }
-        .map-explore-page__road--h2 {
-          left: 0; right: 0; top: 65%;
-          height: 4px;
-        }
-        .map-explore-page__road--v1 {
-          top: 0; bottom: 0; left: 25%;
-          width: 6px;
-        }
-        .map-explore-page__road--v2 {
-          top: 0; bottom: 0; left: 55%;
-          width: 5px;
-        }
-        .map-explore-page__road--v3 {
-          top: 0; bottom: 0; left: 82%;
-          width: 4px;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          width: 100%;
+          height: 100%;
+          z-index: 1;
         }
 
-        /* Simulated parks */
-        .map-explore-page__park {
+        /* Map overlay */
+        .map-explore-page__map-overlay {
           position: absolute;
-          left: 38%;
-          top: 35%;
-          width: 120px;
-          height: 80px;
-          background: rgba(76, 175, 80, 0.25);
-          border-radius: 40% 60% 50% 50%;
-          border: 2px dashed rgba(76, 175, 80, 0.4);
-        }
-        .map-explore-page__park--2 {
-          left: 8%;
-          top: 60%;
-          width: 80px;
-          height: 60px;
-          background: rgba(76, 175, 80, 0.2);
-          border-radius: 50% 40% 60% 40%;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(255, 255, 255, 0.05);
+          z-index: 2;
+          pointer-events: none;
         }
 
-        /* Simulated buildings */
-        .map-explore-page__building {
+        /* Map labels */
+        .map-explore-page__map-label {
           position: absolute;
-          width: 30px;
-          height: 30px;
-          background: rgba(158, 158, 158, 0.35);
+          font-size: 11px;
+          font-weight: 600;
+          color: #555;
+          background: rgba(255, 255, 255, 0.85);
+          padding: 2px 8px;
           border-radius: 4px;
-          border: 1px solid rgba(158, 158, 158, 0.3);
+          z-index: 3;
+          pointer-events: none;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+          white-space: nowrap;
+        }
+
+        /* Map controls */
+        .map-explore-page__map-controls {
+          position: absolute;
+          right: 12px;
+          top: 12px;
+          z-index: 20;
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+        .map-explore-page__map-control-btn {
+          width: 32px;
+          height: 32px;
+          border-radius: var(--radius-sm);
+          border: 1px solid var(--border);
+          background: var(--bg-card);
+          color: var(--text);
+          font-size: 16px;
+          font-weight: 700;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          box-shadow: var(--shadow-sm);
+          transition: all var(--transition-fast);
+        }
+        .map-explore-page__map-control-btn:hover {
+          background: var(--bg-secondary);
+          box-shadow: var(--shadow-md);
+        }
+
+        /* Map legend */
+        .map-explore-page__map-legend {
+          position: absolute;
+          left: 12px;
+          bottom: 12px;
+          z-index: 20;
+          background: rgba(255, 255, 255, 0.92);
+          backdrop-filter: blur(4px);
+          border-radius: var(--radius-sm);
+          padding: 10px 14px;
+          box-shadow: var(--shadow-sm);
+          border: 1px solid var(--border);
+        }
+        .map-explore-page__map-legend-item {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 12px;
+          color: var(--text-secondary);
+          margin-bottom: 6px;
+        }
+        .map-explore-page__map-legend-item:last-child {
+          margin-bottom: 0;
+        }
+        .map-explore-page__map-legend-dot {
+          width: 10px;
+          height: 10px;
+          border-radius: 50%;
+          flex-shrink: 0;
         }
 
         /* My location */
@@ -1020,6 +1108,9 @@ export default function MapExplorePage() {
           top: 50%;
           transform: translate(-50%, -50%);
           z-index: 5;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
         }
         .map-explore-page__my-location-dot {
           width: 16px;
@@ -1039,6 +1130,17 @@ export default function MapExplorePage() {
           border-radius: 50%;
           background: rgba(24, 144, 255, 0.15);
           animation: map-explore-page__pulse 2s ease-in-out infinite;
+        }
+        .map-explore-page__my-location-label {
+          margin-top: 4px;
+          font-size: 11px;
+          font-weight: 600;
+          color: #1890ff;
+          background: rgba(255, 255, 255, 0.9);
+          padding: 1px 6px;
+          border-radius: 4px;
+          white-space: nowrap;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
         @keyframes map-explore-page__pulse {
           0%, 100% { transform: translate(-50%, -50%) scale(0.8); opacity: 1; }

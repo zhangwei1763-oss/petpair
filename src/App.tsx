@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import Layout from './components/Layout'
 import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
+import RegisterPage from './pages/RegisterPage'
 import DashboardPage from './pages/DashboardPage'
 import PetProfilePage from './pages/PetProfilePage'
 import PetDetailPage from './pages/PetDetailPage'
@@ -104,6 +105,16 @@ function App() {
               <Navigate to="/dashboard" replace />
             ) : (
               <LoginPage onLogin={handleLogin} />
+            )
+          }
+        />
+        <Route
+          path="/register"
+          element={
+            isLoggedIn ? (
+              <Navigate to="/dashboard" replace />
+            ) : (
+              <RegisterPage onLogin={handleLogin} />
             )
           }
         />
