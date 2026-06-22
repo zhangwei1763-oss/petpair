@@ -56,7 +56,7 @@ export async function createPet(pet: Partial<PetProfile>): Promise<PetProfile> {
       energyLevel: pet.energyLevel || 'medium',
       activityPreferences: pet.activityPreferences || [],
       socialPreferences: pet.socialPreferences || [],
-      photos: pet.photos || ['https://placehold.co/400x400/c4785a/ffffff?text=新宠物'],
+      photos: pet.photos || ['https://placehold.co/400x400/c4785a/ffffff?text=NewPet'],
       bio: pet.bio || '',
       vaccineStatus: pet.vaccineStatus || 'partial',
       neutered: pet.neutered || false,

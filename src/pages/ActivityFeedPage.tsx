@@ -351,9 +351,9 @@ export default function ActivityFeedPage() {
                 className="btn btn-outline btn-sm"
                 onClick={() => {
                   const demoImages = [
-                    'https://placehold.co/800x600/c4785a/ffffff?text=动态图片',
-                    'https://placehold.co/800x600/c4785a/ffffff?text=动态图片',
-                    'https://placehold.co/800x600/c4785a/ffffff?text=动态图片',
+                    'https://placehold.co/800x600/c4785a/ffffff?text=Photo',
+                    'https://placehold.co/800x600/c4785a/ffffff?text=Photo',
+                    'https://placehold.co/800x600/c4785a/ffffff?text=Photo',
                   ];
                   if (newPostImages.length < 3) {
                     setNewPostImages((prev) => [

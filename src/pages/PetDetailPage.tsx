@@ -75,15 +75,15 @@ const vaccineColorMap: Record<string, string> = {
 // Mock owner data
 const ownerMap: Record<string, { name: string; avatar: string }> = {
   user_101: { name: 'Lucky爸', avatar: 'https://placehold.co/200x200/7a9e7e/ffffff?text=Lucky爸' },
-  user_102: { name: '豆豆妈', avatar: 'https://placehold.co/200x200/7a9e7e/ffffff?text=豆豆妈' },
-  user_103: { name: '大橘铲屎官', avatar: 'https://placehold.co/200x200/7a9e7e/ffffff?text=大橘铲屎官' },
-  user_104: { name: '二哈铲屎官', avatar: 'https://placehold.co/200x200/7a9e7e/ffffff?text=二哈铲屎官' },
-  user_105: { name: '小白妈', avatar: 'https://placehold.co/200x200/7a9e7e/ffffff?text=小白妈' },
-  user_106: { name: '咪咪妈', avatar: 'https://placehold.co/200x200/7a9e7e/ffffff?text=咪咪妈' },
-  user_107: { name: '皮皮爸', avatar: 'https://placehold.co/200x200/7a9e7e/ffffff?text=皮皮爸' },
-  user_108: { name: '毛球主人', avatar: 'https://placehold.co/200x200/7a9e7e/ffffff?text=毛球主人' },
-  user_109: { name: '阿福爸', avatar: 'https://placehold.co/200x200/7a9e7e/ffffff?text=阿福爸' },
-  user_110: { name: '花花妈', avatar: 'https://placehold.co/200x200/7a9e7e/ffffff?text=花花妈' },
+  user_102: { name: '豆豆妈', avatar: 'https://placehold.co/200x200/7a9e7e/ffffff?text=Doudou妈' },
+  user_103: { name: '大橘铲屎官', avatar: 'https://placehold.co/200x200/7a9e7e/ffffff?text=Daju铲屎官' },
+  user_104: { name: '二哈铲屎官', avatar: 'https://placehold.co/200x200/7a9e7e/ffffff?text=Owner' },
+  user_105: { name: '小白妈', avatar: 'https://placehold.co/200x200/7a9e7e/ffffff?text=Xiaobai妈' },
+  user_106: { name: '咪咪妈', avatar: 'https://placehold.co/200x200/7a9e7e/ffffff?text=Mimi妈' },
+  user_107: { name: '皮皮爸', avatar: 'https://placehold.co/200x200/7a9e7e/ffffff?text=Pipi爸' },
+  user_108: { name: '毛球主人', avatar: 'https://placehold.co/200x200/7a9e7e/ffffff?text=Maoqiu主人' },
+  user_109: { name: '阿福爸', avatar: 'https://placehold.co/200x200/7a9e7e/ffffff?text=Afu爸' },
+  user_110: { name: '花花妈', avatar: 'https://placehold.co/200x200/7a9e7e/ffffff?text=Huahua妈' },
 };
 
 export default function PetDetailPage() {
@@ -127,7 +127,7 @@ export default function PetDetailPage() {
       <div className="pet-detail-page__hero">
         <img
           className="pet-detail-page__hero-img"
-          src={pet.photos[0] || 'https://placehold.co/400x400/c4785a/ffffff?text=默认'}
+          src={pet.photos[0] || 'https://placehold.co/400x400/c4785a/ffffff?text=Default'}
           alt={pet.name}
         />
         <div className="pet-detail-page__hero-overlay">
