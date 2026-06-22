@@ -20,6 +20,7 @@ const navLinks = [
   { label: '社区', path: '/community' },
   { label: '排行榜', path: '/leaderboard' },
   { label: '消息', path: '/messages' },
+  { label: '宠物档案', path: '/pets' },
   { label: '我的', path: '/profile' },
 ];
 

@@ -20,6 +20,7 @@ import {
   FileText,
   Heart,
   Code,
+  Dog,
 } from 'lucide-react';
 
 const personalityLabelMap: Record<string, string> = {
@@ -82,6 +83,7 @@ export default function ProfilePage({ onLogout }: { onLogout: () => void }) {
   ];
 
   const menuItems = [
+    { icon: <Dog size={18} />, label: '宠物档案管理', action: () => navigate('/pets') },
     { icon: <User size={18} />, label: '编辑资料', action: () => setActiveModal('editProfile') },
     { icon: <Bell size={18} />, label: '通知设置', action: () => setActiveModal('notifications') },
     { icon: <Lock size={18} />, label: '隐私设置', action: () => setActiveModal('privacy') },
@@ -127,7 +129,16 @@ export default function ProfilePage({ onLogout }: { onLogout: () => void }) {
 
       {/* My Pets */}
       <div className="profile-page__section">
-        <h2 className="profile-page__section-title">我的宠物</h2>
+        <div className="profile-page__section-header">
+          <h2 className="profile-page__section-title">我的宠物</h2>
+          <button
+            className="btn btn-sm btn-outline"
+            onClick={() => navigate('/pets')}
+          >
+            <Dog size={14} />
+            管理宠物
+          </button>
+        </div>
         <div className="profile-page__pets">
           {currentUser.pets.map((pet) => (
             <div key={pet.id} className="card profile-page__pet-card">
@@ -385,9 +396,15 @@ export default function ProfilePage({ onLogout }: { onLogout: () => void }) {
         .profile-page__section {
           margin-bottom: 24px;
         }
+        .profile-page__section-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 12px;
+        }
         .profile-page__section-title {
           font-size: 1.125rem;
-          margin-bottom: 12px;
+          margin-bottom: 0;
         }
 
         /* Pets */
