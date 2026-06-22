@@ -71,7 +71,7 @@ export default function PetProfilePage() {
           vaccineStatus: data.vaccineStatus || 'up_to_date',
           photos: data.photos && data.photos.length > 0
             ? data.photos
-            : ['https://picsum.photos/seed/newpet/400/400'],
+            : ['https://placehold.co/400x400/c4785a/ffffff?text=新宠物'],
           bio: data.bio || '',
         };
         setPets((prev) => [...prev, newPet]);

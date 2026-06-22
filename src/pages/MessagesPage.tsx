@@ -40,7 +40,7 @@ export default function MessagesPage() {
       convs.push({
         userId: partnerId,
         petName: relatedPet?.name || '未知宠物',
-        petPhoto: relatedPet?.photos[0] || 'https://picsum.photos/seed/default/200/200',
+        petPhoto: relatedPet?.photos[0] || 'https://placehold.co/200x200/c4785a/ffffff?text=默认',
         messages: sorted,
         lastMessage: last.content,
         lastTime: last.createdAt,

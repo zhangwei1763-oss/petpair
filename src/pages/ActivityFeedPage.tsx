@@ -351,9 +351,9 @@ export default function ActivityFeedPage() {
                 className="btn btn-outline btn-sm"
                 onClick={() => {
                   const demoImages = [
-                    'https://picsum.photos/seed/newpost1/800/600',
-                    'https://picsum.photos/seed/newpost2/800/600',
-                    'https://picsum.photos/seed/newpost3/800/600',
+                    'https://placehold.co/800x600/c4785a/ffffff?text=动态图片',
+                    'https://placehold.co/800x600/c4785a/ffffff?text=动态图片',
+                    'https://placehold.co/800x600/c4785a/ffffff?text=动态图片',
                   ];
                   if (newPostImages.length < 3) {
                     setNewPostImages((prev) => [
