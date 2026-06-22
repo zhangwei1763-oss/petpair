@@ -2,7 +2,8 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import type { Message } from '../types';
 import { currentUser, nearbyPets, mockMessages } from '../data/mockData';
 import MessageBubble from '../components/MessageBubble';
-import { MessageCircle, Send, ArrowLeft } from 'lucide-react';
+import { summonPawPal } from '../api/ai';
+import { MessageCircle, Send, ArrowLeft, Sparkles } from 'lucide-react';
 
 interface Conversation {
   userId: string;
@@ -57,6 +58,7 @@ export default function MessagesPage() {
   const [inputText, setInputText] = useState('');
   const [isMobileDetail, setIsMobileDetail] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [isAiActive, setIsAiActive] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const sendTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -120,6 +122,110 @@ export default function MessagesPage() {
     setIsMobileDetail(false);
     setActiveConv(null);
   };
+
+  // === 召唤爪爪小助手 ===
+  const handleSummonPawPal = useCallback(async () => {
+    if (!activeConv || isAiActive) return;
+
+    const myPet = currentUser.pets[0];
+    const otherPet = nearbyPets.find((p) => p.ownerId === activeConv.userId);
+
+    if (!myPet || !otherPet) return;
+
+    setIsAiActive(true);
+
+    // 1. 先插入一条 loading 消息
+    const loadingMsg: Message = {
+      id: `ai_loading_${Date.now()}`,
+      senderId: 'pawpal',
+      receiverId: currentUser.id,
+      content: '',
+      type: 'ai',
+      createdAt: new Date().toISOString(),
+      isAi: true,
+      aiLoading: true,
+    };
+
+    setConversations((prev) =>
+      prev.map((conv) =>
+        conv.userId === activeConv.userId
+          ? {
+              ...conv,
+              messages: [...conv.messages, loadingMsg],
+            }
+          : conv
+      )
+    );
+
+    // 2. 收集聊天记录
+    const chatHistory = activeConv.messages.map((m) => {
+      const sender = m.senderId === currentUser.id ? '我' : activeConv.petName;
+      return `${sender}: ${m.content}`;
+    });
+
+    // 3. 调用 AI
+    try {
+      const aiResponse = await summonPawPal({
+        myPet,
+        otherPet,
+        chatHistory,
+      });
+
+      // 4. 替换 loading 消息为真实回复
+      const aiMsg: Message = {
+        id: `ai_${Date.now()}`,
+        senderId: 'pawpal',
+        receiverId: currentUser.id,
+        content: aiResponse,
+        type: 'ai',
+        createdAt: new Date().toISOString(),
+        isAi: true,
+      };
+
+      setConversations((prev) =>
+        prev.map((conv) =>
+          conv.userId === activeConv.userId
+            ? {
+                ...conv,
+                messages: [
+                  ...conv.messages.filter((m) => !m.aiLoading),
+                  aiMsg,
+                ],
+                lastMessage: '🐾 爪爪小助手给出了活动建议',
+                lastTime: aiMsg.createdAt,
+              }
+            : conv
+        )
+      );
+    } catch {
+      // 失败时也替换 loading
+      const failMsg: Message = {
+        id: `ai_${Date.now()}`,
+        senderId: 'pawpal',
+        receiverId: currentUser.id,
+        content: '爪爪小助手暂时走神了，请稍后再试~',
+        type: 'ai',
+        createdAt: new Date().toISOString(),
+        isAi: true,
+      };
+
+      setConversations((prev) =>
+        prev.map((conv) =>
+          conv.userId === activeConv.userId
+            ? {
+                ...conv,
+                messages: [
+                  ...conv.messages.filter((m) => !m.aiLoading),
+                  failMsg,
+                ],
+              }
+            : conv
+        )
+      );
+    } finally {
+      setIsAiActive(false);
+    }
+  }, [activeConv, isAiActive]);
 
   const currentConv = conversations.find((c) => c.userId === activeConv?.userId);
 
@@ -203,6 +309,21 @@ export default function MessagesPage() {
                 />
               ))}
               <div ref={messagesEndRef} />
+            </div>
+
+            {/* AI Summon Bar */}
+            <div className="messages-page__ai-bar">
+              <button
+                className="messages-page__ai-btn"
+                onClick={handleSummonPawPal}
+                disabled={isAiActive}
+              >
+                <span className="messages-page__ai-btn-icon">🐾</span>
+                <span className="messages-page__ai-btn-text">
+                  {isAiActive ? '爪爪小助手正在思考...' : '召唤爪爪小助手'}
+                </span>
+                <Sparkles size={14} />
+              </button>
             </div>
 
             {/* Input */}
@@ -336,6 +457,46 @@ export default function MessagesPage() {
         .messages-page__empty-chat {
           flex: 1;
         }
+
+        /* ===== AI Summon Bar ===== */
+        .messages-page__ai-bar {
+          padding: 8px 20px;
+          background: var(--bg-card);
+          border-top: 1px solid var(--border);
+        }
+        .messages-page__ai-btn {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          width: 100%;
+          padding: 10px 16px;
+          border-radius: var(--radius-full);
+          border: 1.5px solid rgba(102, 126, 234, 0.3);
+          background: linear-gradient(135deg, rgba(102, 126, 234, 0.04) 0%, rgba(118, 75, 162, 0.04) 100%);
+          color: #667eea;
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all var(--transition-fast);
+        }
+        .messages-page__ai-btn:hover:not(:disabled) {
+          background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+          border-color: #667eea;
+          box-shadow: 0 2px 12px rgba(102, 126, 234, 0.2);
+        }
+        .messages-page__ai-btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+        .messages-page__ai-btn-icon {
+          font-size: 16px;
+        }
+        .messages-page__ai-btn-text {
+          flex: 1;
+        }
+
+        /* Input */
         .messages-page__input-bar {
           display: flex;
           align-items: center;

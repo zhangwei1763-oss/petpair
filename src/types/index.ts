@@ -94,10 +94,12 @@ export interface Message {
   id: string;
   senderId: string;
   receiverId: string;
-  invitationId?: string;
+  invitationId?: string;       // 可选，关联邀约ID
   content: string;
-  type: 'text' | 'image' | 'location';
+  type: 'text' | 'image' | 'location' | 'ai';  // 支持四种消息类型
   createdAt: string;
+  isAi?: boolean;               // AI 消息标记
+  aiLoading?: boolean;         // AI 正在生成中
 }
 
 export interface Review {

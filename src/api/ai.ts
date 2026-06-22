@@ -232,6 +232,87 @@ function getDefaultAnalysis(species: 'dog' | 'cat' | 'other'): AIPersonalityAnal
 }
 
 /**
+ * AI 聊天助手 —— 爪爪小助手（PawPal）
+ * 根据双方宠物信息、聊天记录等综合分析，给出活动建议
+ */
+export async function summonPawPal(context: {
+  myPet: PetProfile;
+  otherPet: PetProfile;
+  chatHistory: string[];
+  userQuestion?: string;
+}): Promise<string> {
+  const { myPet, otherPet, chatHistory, userQuestion } = context;
+
+  const tagMap: Record<string, string> = {
+    lively: '活泼', gentle: '温顺', timid: '胆小', independent: '独立', clingy: '粘人',
+  };
+  const energyMap: Record<string, string> = { low: '低', medium: '中等', high: '高' };
+  const tagStr = (tags: string[]) => tags.map((t) => tagMap[t] || t).join('、');
+
+  const chatSummary = chatHistory.length > 0
+    ? chatHistory.slice(-10).join('\n')
+    : '（暂无聊天记录）';
+
+  const messages: AIChatMessage[] = [
+    {
+      role: 'system',
+      content: `你是"爪爪小助手"，PetPair 宠物社交平台的智能约会策划师。你的任务是帮助两位宠物主人策划一次愉快的宠物约会。
+
+你的特点：
+- 语气亲切可爱，像一个热心的朋友
+- 善于根据宠物性格和主人需求推荐活动
+- 考虑实际因素（天气、时间、距离、安全等）
+- 回答简洁有条理，控制在 200 字以内
+
+请用以下格式组织你的建议：
+1. 推荐活动（1-2个）
+2. 推荐地点
+3. 建议时间
+4. 温馨提示（安全/注意事项）`,
+    },
+    {
+      role: 'user',
+      content: `请帮我策划一次宠物约会！
+
+【我的宠物】
+名字：${myPet.name}
+品种：${myPet.breed}
+性别：${myPet.gender === 'male' ? '公' : '母'}
+年龄：${myPet.age}岁
+体型：${myPet.size}
+性格：${tagStr(myPet.personalityTags)}
+能量水平：${energyMap[myPet.energyLevel]}
+喜欢：${myPet.activityPreferences?.join('、') || '未知'}
+
+【对方的宠物】
+名字：${otherPet.name}
+品种：${otherPet.breed}
+性别：${otherPet.gender === 'male' ? '公' : '母'}
+年龄：${otherPet.age}岁
+体型：${otherPet.size}
+性格：${tagStr(otherPet.personalityTags)}
+能量水平：${energyMap[otherPet.energyLevel]}
+喜欢：${otherPet.activityPreferences?.join('、') || '未知'}
+
+【聊天记录】
+${chatSummary}
+
+${userQuestion ? `【用户补充问题】\n${userQuestion}` : ''}
+
+请给出具体的活动建议！`,
+    },
+  ];
+
+  try {
+    return await chatWithAI(messages);
+  } catch {
+    return `🐾 爪爪小助手暂时走神了...
+
+不过根据${myPet.name}和${otherPet.name}的性格，推荐你们一起去附近的公园散步，上午10点是个不错的时间哦！记得带上水壶和拾便袋~`;
+  }
+}
+
+/**
  * 检查 AI API 是否配置
  */
 export function isAIConfigured(): boolean {
