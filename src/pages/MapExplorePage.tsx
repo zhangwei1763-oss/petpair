@@ -1,7 +1,8 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { nearbyPets, currentUser } from '../data/mockData';
 import { calculateAdvancedMatchScore, getMatchLabel, getCompatibilityAdvice } from '../utils/matchEngine';
 import { generateMatchExplanation } from '../api/ai';
+import { loadAMapAPI, isAMapConfigured } from '../utils/amapLoader';
 import {
   MapPin,
   Navigation,
@@ -14,20 +15,25 @@ import {
   Heart,
   Zap,
   Search,
+  Loader,
 } from 'lucide-react';
 
-// 模拟每个宠物在地图上的位置（百分比坐标）
-const petPositions: Record<string, { x: number; y: number }> = {
-  pet_101: { x: 35, y: 25 },
-  pet_102: { x: 62, y: 18 },
-  pet_103: { x: 20, y: 55 },
-  pet_104: { x: 75, y: 40 },
-  pet_105: { x: 48, y: 68 },
-  pet_106: { x: 15, y: 30 },
-  pet_107: { x: 80, y: 72 },
-  pet_108: { x: 55, y: 42 },
-  pet_109: { x: 30, y: 80 },
-  pet_110: { x: 68, y: 58 },
+// 上海徐汇区中心坐标
+const CENTER_LNG = 121.4347;
+const CENTER_LAT = 31.1884;
+
+// 宠物真实经纬度坐标（上海徐汇区附近）
+const petPositions: Record<string, { lng: number; lat: number }> = {
+  pet_101: { lng: 121.4297, lat: 31.1934 },
+  pet_102: { lng: 121.4497, lat: 31.1984 },
+  pet_103: { lng: 121.4147, lat: 31.1784 },
+  pet_104: { lng: 121.4597, lat: 31.1884 },
+  pet_105: { lng: 121.4397, lat: 31.1684 },
+  pet_106: { lng: 121.4097, lat: 31.1834 },
+  pet_107: { lng: 121.4647, lat: 31.1634 },
+  pet_108: { lng: 121.4447, lat: 31.1884 },
+  pet_109: { lng: 121.4247, lat: 31.1584 },
+  pet_110: { lng: 121.4547, lat: 31.1784 },
 };
 
 // 模拟距离
@@ -57,6 +63,11 @@ export default function MapExplorePage() {
   const [reasonFilter, setReasonFilter] = useState<ReasonFilter>('all');
   const [aiExplanations, setAiExplanations] = useState<Record<string, string>>({});
   const [loadingAi, setLoadingAi] = useState<Record<string, boolean>>({});
+  const [mapReady, setMapReady] = useState(false);
+  const [mapError, setMapError] = useState('');
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<AMap.Map | null>(null);
+  const markersRef = useRef<AMap.Marker[]>([]);
 
   const myPet = currentUser.pets[0];
 
@@ -189,6 +200,131 @@ export default function MapExplorePage() {
     distance: '距离',
     health: '健康',
   };
+
+  // === 高德地图初始化 ===
+  useEffect(() => {
+    if (activeTab !== 'map' || !mapContainerRef.current) return;
+    if (!isAMapConfigured()) {
+      setMapError('地图服务未配置');
+      return;
+    }
+
+    let destroyed = false;
+
+    const initMap = async () => {
+      try {
+        await loadAMapAPI();
+        if (destroyed || !mapContainerRef.current) return;
+
+        const map = new AMap.Map(mapContainerRef.current, {
+          zoom: 14,
+          center: [CENTER_LNG, CENTER_LAT],
+          viewMode: '2D',
+          mapStyle: 'amap://styles/fresh',
+          resizeEnable: true,
+        });
+
+        // 添加比例尺和工具栏
+        AMap.plugin(['AMap.Scale', 'AMap.ToolBar'], () => {
+          map.addControl(new AMap.Scale());
+          map.addControl(new AMap.ToolBar({ position: 'RT' }));
+        });
+
+        mapInstanceRef.current = map;
+        if (!destroyed) setMapReady(true);
+      } catch (err: any) {
+        if (!destroyed) setMapError(err.message || '地图加载失败');
+      }
+    };
+
+    initMap();
+
+    return () => {
+      destroyed = true;
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.destroy();
+        mapInstanceRef.current = null;
+      }
+      setMapReady(false);
+    };
+  }, [activeTab]);
+
+  // === 更新地图标记 ===
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || !mapReady) return;
+
+    // 清除旧标记
+    markersRef.current.forEach((m) => map.remove(m));
+    markersRef.current = [];
+
+    // 添加我的位置标记
+    const myMarker = new AMap.Marker({
+      position: [CENTER_LNG, CENTER_LAT],
+      content: `<div style="
+        width:16px;height:16px;border-radius:50%;
+        background:#1890ff;border:3px solid #fff;
+        box-shadow:0 2px 8px rgba(24,144,255,0.5);
+      "></div>`,
+      offset: new AMap.Pixel(-8, -8),
+      zIndex: 100,
+    });
+    map.add(myMarker);
+    markersRef.current.push(myMarker);
+
+    // 添加宠物标记
+    filteredPets.forEach((pet) => {
+      const pos = petPositions[pet.id];
+      if (!pos) return;
+
+      const matchInfo = petMatchScores[pet.id];
+      const markerColor = matchInfo ? matchInfo.color : getMarkerColor(pet.species);
+      const score = matchInfo?.score || 0;
+
+      const markerHtml = `
+        <div style="display:flex;flex-direction:column;align-items:center;cursor:pointer;">
+          <div style="
+            width:36px;height:36px;border-radius:50%;
+            background-image:url(${pet.photos[0]});
+            background-size:cover;background-position:center;
+            border:3px solid ${markerColor};
+            box-shadow:0 2px 8px rgba(0,0,0,0.3);
+            background-color:${markerColor};
+          "></div>
+          ${score >= 80 ? `<div style="
+            position:absolute;top:-4px;right:-10px;
+            background:#fff;color:${markerColor};
+            font-size:10px;font-weight:800;
+            padding:1px 5px;border-radius:10px;
+            box-shadow:0 1px 4px rgba(0,0,0,0.15);
+            border:1.5px solid ${markerColor};
+          ">${score}</div>` : ''}
+          <div style="
+            margin-top:2px;font-size:11px;font-weight:600;
+            color:#333;background:rgba(255,255,255,0.9);
+            padding:1px 6px;border-radius:4px;
+            white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,0.1);
+          ">${pet.name}</div>
+        </div>
+      `;
+
+      const marker = new AMap.Marker({
+        position: [pos.lng, pos.lat],
+        content: markerHtml,
+        offset: new AMap.Pixel(-18, -18),
+        zIndex: score >= 80 ? 50 : 10,
+      });
+
+      marker.on('click', () => setSelectedPetId(pet.id));
+      map.add(marker);
+      markersRef.current.push(marker);
+    });
+
+    // 自适应视野
+    if (markersRef.current.length > 1) {
+      map.setFitView(markersRef.current);
+    }
+  }, [filteredPets, petMatchScores, mapReady]);
 
   // === 未添加宠物时的空状态 ===
   if (!myPet) {
@@ -327,93 +463,31 @@ export default function MapExplorePage() {
       {/* ============================== TAB: 地图模式 ============================== */}
       {activeTab === 'map' && (
         <>
-          {/* 地图区域 - 使用真实地图背景图片增强真实感 */}
+          {/* 高德真实地图 */}
           <div className="map-explore-page__map">
-            <div className="map-explore-page__map-bg">
-              {/* 真实地图背景 - 使用 OpenStreetMap 静态图 */}
-              <div 
-                className="map-explore-page__map-tile"
-                style={{
-                  backgroundImage: `url(https://tile.openstreetmap.org/12/3375/1552.png)`,
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
-                }}
-              />
-              {/* 地图覆盖层 - 半透明遮罩让标记更清晰 */}
-              <div className="map-explore-page__map-overlay" />
-              
-              {/* 道路标注 */}
-              <div className="map-explore-page__map-label" style={{ left: '15%', top: '20%' }}>
-                滨江大道
-              </div>
-              <div className="map-explore-page__map-label" style={{ left: '55%', top: '15%' }}>
-                世纪公园
-              </div>
-              <div className="map-explore-page__map-label" style={{ left: '25%', top: '55%' }}>
-                宠物友好广场
-              </div>
-              <div className="map-explore-page__map-label" style={{ left: '70%', top: '45%' }}>
-                绿地公园
-              </div>
-              <div className="map-explore-page__map-label" style={{ left: '45%', top: '75%' }}>
-                 Riverside Park
-              </div>
+            <div
+              ref={mapContainerRef}
+              className="map-explore-page__map-container"
+            />
 
-              {/* 我的位置 */}
-              <div className="map-explore-page__my-location">
-                <div className="map-explore-page__my-location-dot" />
-                <div className="map-explore-page__my-location-pulse" />
-                <span className="map-explore-page__my-location-label">我的位置</span>
+            {/* 地图加载中 */}
+            {!mapReady && !mapError && (
+              <div className="map-explore-page__map-loading">
+                <Loader size={24} className="map-explore-page__map-loading-icon" />
+                <span>地图加载中...</span>
               </div>
+            )}
 
-              {/* 宠物标记 - 按匹配度着色 */}
-              {filteredPets.map((pet) => {
-                const pos = petPositions[pet.id];
-                if (!pos) return null;
-                const isSelected = pet.id === selectedPetId;
-                const matchInfo = petMatchScores[pet.id];
-                const markerColor = matchInfo ? matchInfo.color : getMarkerColor(pet.species);
-                const isHighMatch = matchInfo && matchInfo.score >= 80;
-                return (
-                  <button
-                    key={pet.id}
-                    className={`map-explore-page__marker ${
-                      isSelected ? 'map-explore-page__marker--selected' : ''
-                    } ${isHighMatch ? 'map-explore-page__marker--high-match' : ''}`}
-                    style={{
-                      left: `${pos.x}%`,
-                      top: `${pos.y}%`,
-                      '--marker-color': markerColor,
-                    } as React.CSSProperties}
-                    onClick={() => setSelectedPetId(pet.id)}
-                  >
-                    <div
-                      className="map-explore-page__marker-avatar"
-                      style={{
-                        backgroundImage: `url(${pet.photos[0]})`,
-                        borderColor: markerColor,
-                      }}
-                    />
-                    {isHighMatch && (
-                      <div className="map-explore-page__marker-score">
-                        {matchInfo!.score}
-                      </div>
-                    )}
-                    <span className="map-explore-page__marker-name">{pet.name}</span>
-                  </button>
-                );
-              })}
-
-              {/* 地图控件 */}
-              <div className="map-explore-page__map-controls">
-                <button className="map-explore-page__map-control-btn" title="放大">+</button>
-                <button className="map-explore-page__map-control-btn" title="缩小">-</button>
-                <button className="map-explore-page__map-control-btn" title="定位">
-                  <Navigation size={14} />
-                </button>
+            {/* 地图加载失败 */}
+            {mapError && (
+              <div className="map-explore-page__map-error">
+                <MapPin size={24} />
+                <span>{mapError}</span>
               </div>
+            )}
 
-              {/* 地图图例 */}
+            {/* 地图图例 */}
+            {mapReady && (
               <div className="map-explore-page__map-legend">
                 <div className="map-explore-page__map-legend-item">
                   <span className="map-explore-page__map-legend-dot" style={{ background: '#52c41a' }} />
@@ -428,7 +502,7 @@ export default function MapExplorePage() {
                   <span>一般匹配 (50+)</span>
                 </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* 底部宠物列表 */}
@@ -992,82 +1066,53 @@ export default function MapExplorePage() {
           margin-bottom: 24px;
           position: relative;
         }
-        .map-explore-page__map-bg {
-          position: relative;
+        .map-explore-page__map-container {
           width: 100%;
-          height: 400px;
-          overflow: hidden;
-          background: #e8e8e8;
+          height: 420px;
+          background: #f0f0f0;
         }
 
-        /* Real map tile */
-        .map-explore-page__map-tile {
+        /* Map loading */
+        .map-explore-page__map-loading {
           position: absolute;
           top: 0;
           left: 0;
           right: 0;
           bottom: 0;
-          width: 100%;
-          height: 100%;
-          z-index: 1;
-        }
-
-        /* Map overlay */
-        .map-explore-page__map-overlay {
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: rgba(255, 255, 255, 0.05);
-          z-index: 2;
-          pointer-events: none;
-        }
-
-        /* Map labels */
-        .map-explore-page__map-label {
-          position: absolute;
-          font-size: 11px;
-          font-weight: 600;
-          color: #555;
-          background: rgba(255, 255, 255, 0.85);
-          padding: 2px 8px;
-          border-radius: 4px;
-          z-index: 3;
-          pointer-events: none;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-          white-space: nowrap;
-        }
-
-        /* Map controls */
-        .map-explore-page__map-controls {
-          position: absolute;
-          right: 12px;
-          top: 12px;
-          z-index: 20;
           display: flex;
           flex-direction: column;
-          gap: 4px;
-        }
-        .map-explore-page__map-control-btn {
-          width: 32px;
-          height: 32px;
-          border-radius: var(--radius-sm);
-          border: 1px solid var(--border);
-          background: var(--bg-card);
-          color: var(--text);
-          font-size: 16px;
-          font-weight: 700;
-          display: flex;
           align-items: center;
           justify-content: center;
-          cursor: pointer;
-          box-shadow: var(--shadow-sm);
-          transition: all var(--transition-fast);
-        }
-        .map-explore-page__map-control-btn:hover {
+          gap: 12px;
           background: var(--bg-secondary);
-          box-shadow: var(--shadow-md);
+          z-index: 5;
+          color: var(--text-secondary);
+          font-size: 14px;
+        }
+        .map-explore-page__map-loading-icon {
+          animation: map-explore-page__spin 1s linear infinite;
+        }
+        @keyframes map-explore-page__spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+
+        /* Map error */
+        .map-explore-page__map-error {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 12px;
+          background: var(--bg-secondary);
+          z-index: 5;
+          color: var(--text-secondary);
+          font-size: 14px;
         }
 
         /* Map legend */
@@ -1099,120 +1144,6 @@ export default function MapExplorePage() {
           height: 10px;
           border-radius: 50%;
           flex-shrink: 0;
-        }
-
-        /* My location */
-        .map-explore-page__my-location {
-          position: absolute;
-          left: 50%;
-          top: 50%;
-          transform: translate(-50%, -50%);
-          z-index: 5;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-        }
-        .map-explore-page__my-location-dot {
-          width: 16px;
-          height: 16px;
-          border-radius: 50%;
-          background: #1890ff;
-          border: 3px solid #fff;
-          box-shadow: 0 2px 8px rgba(24, 144, 255, 0.5);
-        }
-        .map-explore-page__my-location-pulse {
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          width: 40px;
-          height: 40px;
-          border-radius: 50%;
-          background: rgba(24, 144, 255, 0.15);
-          animation: map-explore-page__pulse 2s ease-in-out infinite;
-        }
-        .map-explore-page__my-location-label {
-          margin-top: 4px;
-          font-size: 11px;
-          font-weight: 600;
-          color: #1890ff;
-          background: rgba(255, 255, 255, 0.9);
-          padding: 1px 6px;
-          border-radius: 4px;
-          white-space: nowrap;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-        @keyframes map-explore-page__pulse {
-          0%, 100% { transform: translate(-50%, -50%) scale(0.8); opacity: 1; }
-          50% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; }
-        }
-
-        /* Markers */
-        .map-explore-page__marker {
-          position: absolute;
-          transform: translate(-50%, -50%);
-          z-index: 10;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          cursor: pointer;
-          background: none;
-          border: none;
-          padding: 0;
-        }
-        .map-explore-page__marker-avatar {
-          width: 32px;
-          height: 32px;
-          border-radius: 50%;
-          background-size: cover;
-          background-position: center;
-          border: 2.5px solid;
-          border-color: var(--marker-color);
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
-          transition: transform var(--transition-fast), box-shadow var(--transition-fast);
-          background-color: var(--marker-color);
-        }
-        .map-explore-page__marker:hover .map-explore-page__marker-avatar {
-          transform: scale(1.15);
-          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
-        }
-        .map-explore-page__marker--selected .map-explore-page__marker-avatar {
-          transform: scale(1.25);
-          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-        }
-        /* 高匹配度标记脉动动画 */
-        .map-explore-page__marker--high-match .map-explore-page__marker-avatar {
-          box-shadow: 0 0 0 0 var(--marker-color);
-          animation: map-explore-page__marker-pulse 1.5s ease-out infinite;
-        }
-        @keyframes map-explore-page__marker-pulse {
-          0% { box-shadow: 0 0 0 0 var(--marker-color); }
-          70% { box-shadow: 0 0 0 12px transparent; }
-          100% { box-shadow: 0 0 0 0 transparent; }
-        }
-        .map-explore-page__marker-score {
-          position: absolute;
-          top: -6px;
-          right: -8px;
-          background: #fff;
-          color: var(--marker-color);
-          font-size: 10px;
-          font-weight: 800;
-          padding: 1px 5px;
-          border-radius: 10px;
-          box-shadow: 0 1px 4px rgba(0,0,0,0.15);
-          border: 1.5px solid var(--marker-color);
-        }
-        .map-explore-page__marker-name {
-          margin-top: 4px;
-          font-size: 11px;
-          font-weight: 600;
-          color: #333;
-          background: rgba(255, 255, 255, 0.85);
-          padding: 1px 6px;
-          border-radius: 4px;
-          white-space: nowrap;
-          box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
         }
 
         /* ===== Bottom List ===== */
@@ -1708,8 +1639,8 @@ export default function MapExplorePage() {
 
         /* ===== Responsive ===== */
         @media (max-width: 768px) {
-          .map-explore-page__map-bg {
-            height: 300px;
+          .map-explore-page__map-container {
+            height: 320px;
           }
           .map-explore-page__filters {
             flex-direction: column;
@@ -1744,8 +1675,8 @@ export default function MapExplorePage() {
         }
 
         @media (max-width: 480px) {
-          .map-explore-page__map-bg {
-            height: 250px;
+          .map-explore-page__map-container {
+            height: 260px;
           }
           .map-explore-page__list-card {
             min-width: 240px;
