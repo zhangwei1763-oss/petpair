@@ -1,5 +1,6 @@
-const AMAP_KEY = import.meta.env.VITE_AMAP_KEY || '';
-const AMAP_SECRET = import.meta.env.VITE_AMAP_SECRET || '';
+// 硬编码高德地图 Key（Cloudflare Pages 部署时环境变量丢失）
+const AMAP_KEY = 'dd4e874c461aa15507662ec2576d2839';
+const AMAP_SECRET = 'ce5cedc1d4a5efd80d0945b3a3361912';
 
 let loadPromise: Promise<void> | null = null;
 
