@@ -4,6 +4,7 @@ import Layout from './components/Layout'
 import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
+import OnboardingPage from './pages/OnboardingPage'
 import DashboardPage from './pages/DashboardPage'
 import PetProfilePage from './pages/PetProfilePage'
 import PetDetailPage from './pages/PetDetailPage'
@@ -23,13 +24,29 @@ import { currentUser } from './data/mockData'
 import { isSupabaseConfigured } from './api/client'
 import { getSession, onAuthStateChange, getUserProfile, createUserProfile, signOut } from './api/auth'
 
+interface RegisteredUserData {
+  name: string;
+  email: string;
+}
+
 function App() {
   const [user, setUser] = useState<any>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [registeredUser, setRegisteredUser] = useState<RegisteredUserData | null>(null);
   const unsubscribeRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
+    // 从 localStorage 恢复注册用户信息
+    const storedUser = localStorage.getItem('petpair_registered_user');
+    if (storedUser) {
+      try {
+        setRegisteredUser(JSON.parse(storedUser));
+      } catch {
+        // ignore parse errors
+      }
+    }
+
     if (isSupabaseConfigured) {
       // Supabase 模式
       getSession().then(session => {
@@ -73,8 +90,11 @@ function App() {
     }
   }, []);
 
-  const handleLogin = () => {
+  const handleLogin = (userData?: RegisteredUserData) => {
     setIsLoggedIn(true);
+    if (userData) {
+      setRegisteredUser(userData);
+    }
   };
 
   const handleLogout = async () => {
@@ -83,6 +103,8 @@ function App() {
     }
     setUser(null);
     setIsLoggedIn(false);
+    setRegisteredUser(null);
+    localStorage.removeItem('petpair_registered_user');
   };
 
   if (loading) {
@@ -115,6 +137,19 @@ function App() {
               <Navigate to="/dashboard" replace />
             ) : (
               <RegisterPage onLogin={handleLogin} />
+            )
+          }
+        />
+        <Route
+          path="/onboarding"
+          element={
+            isLoggedIn ? (
+              <OnboardingPage
+                userName={registeredUser?.name || undefined}
+                onLogin={() => handleLogin()}
+              />
+            ) : (
+              <Navigate to="/login" replace />
             )
           }
         />

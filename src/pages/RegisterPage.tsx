@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { UserPlus, Mail, Lock, User, ArrowLeft, CheckCircle } from 'lucide-react';
+import { UserPlus, Mail, Lock, User, ArrowLeft } from 'lucide-react';
 import { signUpWithEmail } from '../api/auth';
 import { isSupabaseConfigured } from '../api/client';
 
 interface RegisterPageProps {
-  onLogin: () => void;
+  onLogin: (userData?: { name: string; email: string }) => void;
 }
 
 export default function RegisterPage({ onLogin }: RegisterPageProps) {
@@ -17,7 +17,6 @@ export default function RegisterPage({ onLogin }: RegisterPageProps) {
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
 
   const validateForm = () => {
     if (!name.trim()) return '请输入昵称';
@@ -47,11 +46,18 @@ export default function RegisterPage({ onLogin }: RegisterPageProps) {
     try {
       if (isSupabaseConfigured) {
         await signUpWithEmail(email, password, name.trim());
-        setSuccess(true);
+        // Supabase 模式：注册成功后跳转到 onboarding
+        const userData = { name: name.trim(), email: email.trim() };
+        localStorage.setItem('petpair_registered_user', JSON.stringify(userData));
+        onLogin(userData);
+        navigate('/onboarding');
       } else {
         // Mock 模式：模拟注册成功
         setTimeout(() => {
-          setSuccess(true);
+          const userData = { name: name.trim(), email: email.trim() };
+          localStorage.setItem('petpair_registered_user', JSON.stringify(userData));
+          onLogin(userData);
+          navigate('/onboarding');
         }, 800);
       }
     } catch (err: any) {
@@ -60,42 +66,6 @@ export default function RegisterPage({ onLogin }: RegisterPageProps) {
       setLoading(false);
     }
   };
-
-  const handleMockLogin = () => {
-    onLogin();
-    navigate('/dashboard');
-  };
-
-  if (success) {
-    return (
-      <div className="register-page">
-        <div className="register-page__card">
-          <div className="register-page__success">
-            <CheckCircle size={64} className="register-page__success-icon" />
-            <h2>注册成功！</h2>
-            <p>
-              {isSupabaseConfigured
-                ? '请查收邮箱验证邮件，验证后即可登录'
-                : '欢迎加入 PetPair，开始为你的宠物寻找玩伴吧！'}
-            </p>
-            <div className="register-page__success-actions">
-              <button
-                className="btn btn-primary register-page__success-btn"
-                onClick={handleMockLogin}
-              >
-                进入首页
-              </button>
-              <Link to="/login" className="btn btn-secondary register-page__success-btn">
-                去登录
-              </Link>
-            </div>
-          </div>
-        </div>
-
-        <style>{getStyles()}</style>
-      </div>
-    );
-  }
 
   return (
     <div className="register-page">
@@ -345,36 +315,6 @@ function getStyles() {
     }
     .register-page__footer a:hover {
       text-decoration: underline;
-    }
-
-    /* Success State */
-    .register-page__success {
-      text-align: center;
-      padding: 20px 0;
-    }
-    .register-page__success-icon {
-      color: #52c41a;
-      margin-bottom: 16px;
-    }
-    .register-page__success h2 {
-      font-size: 1.5rem;
-      margin-bottom: 8px;
-    }
-    .register-page__success p {
-      color: var(--text-secondary);
-      margin-bottom: 24px;
-      line-height: 1.6;
-    }
-    .register-page__success-actions {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-    .register-page__success-btn {
-      width: 100%;
-      padding: 12px;
-      text-align: center;
-      text-decoration: none;
     }
 
     @media (max-width: 480px) {

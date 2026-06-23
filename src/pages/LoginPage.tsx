@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Phone, Lock, LogIn, Mail, UserPlus } from 'lucide-react';
-import { signInWithEmail, signUpWithEmail, createUserProfile } from '../api/auth';
+import { useNavigate, Link } from 'react-router-dom';
+import { Phone, Lock, LogIn, Mail } from 'lucide-react';
+import { signInWithEmail } from '../api/auth';
 import { isSupabaseConfigured } from '../api/client';
 
 interface LoginPageProps {
@@ -16,10 +16,8 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   const [countdown, setCountdown] = useState(0);
   const [loading, setLoading] = useState(false);
   // Supabase 邮箱+密码登录/注册
-  const [isRegister, setIsRegister] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
 
   // 获取验证码倒计时
   const handleSendCode = () => {
@@ -57,16 +55,8 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
     setLoading(true);
     try {
-      if (isRegister) {
-        const data = await signUpWithEmail(email, password, name);
-        if (data?.user) {
-          await createUserProfile(data.user.id, name);
-          onLogin();
-        }
-      } else {
-        await signInWithEmail(email, password);
-        onLogin();
-      }
+      await signInWithEmail(email, password);
+      onLogin();
       navigate('/dashboard');
     } catch (err: any) {
       setError(err.message || '操作失败');
@@ -92,6 +82,9 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     // 模拟网络请求延迟
     await new Promise((r) => setTimeout(r, 800));
     setLoading(false);
+
+    // Mock 模式：保存用户信息到 localStorage
+    localStorage.setItem('petpair_registered_user', JSON.stringify({ name: '', email: '', phone }));
 
     // 通知 App.tsx 登录成功
     onLogin();
@@ -161,25 +154,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
               </div>
             </div>
 
-            {isRegister && (
-              <div className="form-group">
-                <label>昵称</label>
-                <div className="login-page__input-wrapper">
-                  <LogIn size={18} className="login-page__input-icon" />
-                  <input
-                    className="form-input login-page__input"
-                    type="text"
-                    placeholder="请输入昵称"
-                    value={name}
-                    onChange={(e) => {
-                      setName(e.target.value);
-                      if (error) setError('');
-                    }}
-                  />
-                </div>
-              </div>
-            )}
-
             {error && (
               <p className="login-page__error">{error}</p>
             )}
@@ -191,12 +165,10 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             >
               {loading ? (
                 <span className="login-page__loading" />
-              ) : isRegister ? (
-                <UserPlus size={18} />
               ) : (
                 <LogIn size={18} />
               )}
-              {loading ? '处理中...' : isRegister ? '注册' : '登录'}
+              {loading ? '处理中...' : '登录'}
             </button>
           </form>
         ) : (
@@ -281,29 +253,10 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         </button>
 
         <div className="login-page__footer">
-          {isSupabaseConfigured ? (
-            <>
-              <span>{isRegister ? '已有账号？' : '还没有账号？'}</span>
-              <a
-                href="#"
-                className="login-page__register-link"
-                onClick={(e) => {
-                  e.preventDefault();
-                  setIsRegister(!isRegister);
-                  setError('');
-                }}
-              >
-                {isRegister ? '返回登录' : '注册新账号'}
-              </a>
-            </>
-          ) : (
-            <>
-              <span>还没有账号？</span>
-              <a href="#" className="login-page__register-link" onClick={(e) => e.preventDefault()}>
-                注册新账号
-              </a>
-            </>
-          )}
+          <span>还没有账号？</span>
+          <Link to="/register" className="login-page__register-link">
+            注册新账号
+          </Link>
         </div>
 
         <p className="login-page__hint">
