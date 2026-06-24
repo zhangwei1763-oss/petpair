@@ -103,7 +103,7 @@ export default function OnboardingPage({ userName, onLogin }: OnboardingPageProp
           activityPreferences: [] as string[],
           socialPreferences: [] as string[],
           vaccineStatus: 'partial' as const,
-          photos: ['https://placehold.co/400x400/c4785a/ffffff?text=NewPet'],
+          photos: ['https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=400&h=400&fit=crop'],
           bio: '',
         };
 

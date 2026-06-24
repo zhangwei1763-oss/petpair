@@ -351,9 +351,9 @@ export default function ActivityFeedPage() {
                 className="btn btn-outline btn-sm"
                 onClick={() => {
                   const demoImages = [
-                    'https://placehold.co/800x600/c4785a/ffffff?text=Photo',
-                    'https://placehold.co/800x600/c4785a/ffffff?text=Photo',
-                    'https://placehold.co/800x600/c4785a/ffffff?text=Photo',
+                    'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=800&h=600&fit=crop',
+                    'https://images.unsplash.com/photo-1534361960057-19889db9621e?w=800&h=600&fit=crop',
+                    'https://images.unsplash.com/photo-1519052537078-e6302a4968d4?w=800&h=600&fit=crop',
                   ];
                   if (newPostImages.length < 3) {
                     setNewPostImages((prev) => [

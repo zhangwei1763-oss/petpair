@@ -74,16 +74,16 @@ const vaccineColorMap: Record<string, string> = {
 
 // Mock owner data
 const ownerMap: Record<string, { name: string; avatar: string }> = {
-  user_101: { name: 'Lucky爸', avatar: 'https://placehold.co/200x200/7a9e7e/ffffff?text=Lucky爸' },
-  user_102: { name: '豆豆妈', avatar: 'https://placehold.co/200x200/7a9e7e/ffffff?text=Doudou妈' },
-  user_103: { name: '大橘铲屎官', avatar: 'https://placehold.co/200x200/7a9e7e/ffffff?text=Daju铲屎官' },
-  user_104: { name: '二哈铲屎官', avatar: 'https://placehold.co/200x200/7a9e7e/ffffff?text=Owner' },
-  user_105: { name: '小白妈', avatar: 'https://placehold.co/200x200/7a9e7e/ffffff?text=Xiaobai妈' },
-  user_106: { name: '咪咪妈', avatar: 'https://placehold.co/200x200/7a9e7e/ffffff?text=Mimi妈' },
-  user_107: { name: '皮皮爸', avatar: 'https://placehold.co/200x200/7a9e7e/ffffff?text=Pipi爸' },
-  user_108: { name: '毛球主人', avatar: 'https://placehold.co/200x200/7a9e7e/ffffff?text=Maoqiu主人' },
-  user_109: { name: '阿福爸', avatar: 'https://placehold.co/200x200/7a9e7e/ffffff?text=Afu爸' },
-  user_110: { name: '花花妈', avatar: 'https://placehold.co/200x200/7a9e7e/ffffff?text=Huahua妈' },
+  user_101: { name: 'Lucky爸', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=face' },
+  user_102: { name: '豆豆妈', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&h=200&fit=crop&crop=face' },
+  user_103: { name: '大橘铲屎官', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&h=200&fit=crop&crop=face' },
+  user_104: { name: '二哈铲屎官', avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop&crop=face' },
+  user_105: { name: '小白妈', avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop&crop=face' },
+  user_106: { name: '咪咪妈', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop&crop=face' },
+  user_107: { name: '皮皮爸', avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200&h=200&fit=crop&crop=face' },
+  user_108: { name: '毛球主人', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=face' },
+  user_109: { name: '阿福爸', avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop&crop=face' },
+  user_110: { name: '花花妈', avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop&crop=face' },
 };
 
 export default function PetDetailPage() {
@@ -127,7 +127,7 @@ export default function PetDetailPage() {
       <div className="pet-detail-page__hero">
         <img
           className="pet-detail-page__hero-img"
-          src={pet.photos[0] || 'https://placehold.co/400x400/c4785a/ffffff?text=Default'}
+          src={pet.photos[0] || 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=400&h=400&fit=crop'}
           alt={pet.name}
         />
         <div className="pet-detail-page__hero-overlay">

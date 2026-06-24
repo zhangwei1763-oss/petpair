@@ -51,7 +51,7 @@ export default function PetCard({
       <div className="pet-card__header">
         <img
           className="avatar-lg"
-          src={pet.photos[0] || 'https://placehold.co/200x200/c4785a/ffffff?text=Default'}
+          src={pet.photos[0] || 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=200&h=200&fit=crop'}
           alt={pet.name}
         />
         <div className="pet-card__info">
