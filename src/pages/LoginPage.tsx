@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Phone, Lock, LogIn, Mail } from 'lucide-react';
+import { Phone, Lock, LogIn, Mail, User } from 'lucide-react';
 import { signInWithEmail } from '../api/auth';
 import { isSupabaseConfigured } from '../api/client';
+import { getAllUsers } from '../data/mockData';
 
 interface LoginPageProps {
-  onLogin: () => void;
+  onLogin: (userData?: { name: string; email: string }, selectedUserId?: string) => void;
 }
 
 export default function LoginPage({ onLogin }: LoginPageProps) {
@@ -18,6 +19,8 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   // Supabase 邮箱+密码登录/注册
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+
+  const mockUsers = getAllUsers();
 
   // 获取验证码倒计时
   const handleSendCode = () => {
@@ -99,6 +102,11 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     navigate('/dashboard');
   };
 
+  const handleSelectUser = (userId: string) => {
+    onLogin(undefined, userId);
+    navigate('/dashboard');
+  };
+
   return (
     <div className="login-page">
       <div className="login-page__container">
@@ -172,69 +180,115 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             </button>
           </form>
         ) : (
-          /* Mock 手机号+验证码登录表单 */
-          <form className="login-page__form" onSubmit={handleLogin}>
-            <div className="form-group">
-              <label>手机号</label>
-              <div className="login-page__input-wrapper">
-                <Phone size={18} className="login-page__input-icon" />
-                <input
-                  className="form-input login-page__input"
-                  type="tel"
-                  placeholder="请输入手机号"
-                  value={phone}
-                  onChange={(e) => {
-                    setPhone(e.target.value.replace(/\D/g, ''));
-                    if (error) setError('');
-                  }}
-                  maxLength={11}
-                />
+          /* Mock 模式：用户选择登录 */
+          <div className="login-page__mock-section">
+            <div className="login-page__user-select">
+              <h3 className="login-page__user-select-title">
+                <User size={18} />
+                选择用户登录（演示模式）
+              </h3>
+              <div className="login-page__user-cards">
+                {mockUsers.map((user) => (
+                  <div
+                    key={user.id}
+                    className="login-page__user-card"
+                    onClick={() => handleSelectUser(user.id)}
+                  >
+                    <img
+                      className="login-page__user-avatar"
+                      src={user.avatar}
+                      alt={user.name}
+                    />
+                    <div className="login-page__user-info">
+                      <span className="login-page__user-name">{user.name}</span>
+                      <span className="login-page__user-pets">
+                        {user.pets.length} 只宠物
+                      </span>
+                    </div>
+                    <div className="login-page__user-pet-avatars">
+                      {user.pets.slice(0, 2).map((pet) => (
+                        <img
+                          key={pet.id}
+                          className="login-page__user-pet-avatar"
+                          src={pet.photos[0]}
+                          alt={pet.name}
+                          title={pet.name}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
-            <div className="form-group">
-              <label>验证码</label>
-              <div className="login-page__input-wrapper">
-                <Lock size={18} className="login-page__input-icon" />
-                <input
-                  className="form-input login-page__input"
-                  type="text"
-                  placeholder="请输入6位验证码"
-                  value={code}
-                  onChange={(e) => {
-                    setCode(e.target.value.replace(/\D/g, ''));
-                    if (error) setError('');
-                  }}
-                  maxLength={6}
-                />
-                <button
-                  type="button"
-                  className="btn btn-outline btn-sm login-page__code-btn"
-                  disabled={countdown > 0}
-                  onClick={handleSendCode}
-                >
-                  {countdown > 0 ? `${countdown}s` : '获取验证码'}
-                </button>
-              </div>
+            <div className="login-page__divider">
+              <span>或</span>
             </div>
 
-            {error && (
-              <p className="login-page__error">{error}</p>
-            )}
+            {/* Mock 手机号+验证码登录表单 */}
+            <form className="login-page__form" onSubmit={handleLogin}>
+              <div className="form-group">
+                <label>手机号</label>
+                <div className="login-page__input-wrapper">
+                  <Phone size={18} className="login-page__input-icon" />
+                  <input
+                    className="form-input login-page__input"
+                    type="tel"
+                    placeholder="请输入手机号"
+                    value={phone}
+                    onChange={(e) => {
+                      setPhone(e.target.value.replace(/\D/g, ''));
+                      if (error) setError('');
+                    }}
+                    maxLength={11}
+                  />
+                </div>
+              </div>
 
-            <button
-              type="submit"
-              className="btn btn-primary btn-lg login-page__submit"
-              disabled={loading}
-            >
-              {loading ? (
-                <span className="login-page__loading" />
-              ) : (
-                <LogIn size={18} />
+              <div className="form-group">
+                <label>验证码</label>
+                <div className="login-page__input-wrapper">
+                  <Lock size={18} className="login-page__input-icon" />
+                  <input
+                    className="form-input login-page__input"
+                    type="text"
+                    placeholder="请输入6位验证码"
+                    value={code}
+                    onChange={(e) => {
+                      setCode(e.target.value.replace(/\D/g, ''));
+                      if (error) setError('');
+                    }}
+                    maxLength={6}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-sm login-page__code-btn"
+                    disabled={countdown > 0}
+                    onClick={handleSendCode}
+                  >
+                    {countdown > 0 ? `${countdown}s` : '获取验证码'}
+                  </button>
+                </div>
+              </div>
+
+              {error && (
+                <p className="login-page__error">{error}</p>
               )}
-              {loading ? '登录中...' : '登录'}
-            </button>
-          </form>
+
+              <button
+                type="submit"
+                className="btn btn-primary btn-lg login-page__submit"
+                disabled={loading}
+              >
+                {loading ? (
+                  <span className="login-page__loading" />
+                ) : (
+                  <LogIn size={18} />
+                )}
+                {loading ? '登录中...' : '登录'}
+              </button>
+            </form>
+          </div>
         )}
 
         <div className="login-page__divider">
@@ -414,6 +468,82 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         }
         .login-page__hint a:hover {
           text-decoration: underline;
+        }
+
+        /* ===== 用户选择卡片样式 ===== */
+        .login-page__mock-section {
+          margin-bottom: 20px;
+        }
+        .login-page__user-select {
+          margin-bottom: 20px;
+        }
+        .login-page__user-select-title {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 14px;
+          font-weight: 600;
+          color: var(--text-secondary);
+          margin-bottom: 12px;
+        }
+        .login-page__user-cards {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+        .login-page__user-card {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 14px 16px;
+          background: var(--bg-card);
+          border: 2px solid var(--border);
+          border-radius: var(--radius-md);
+          cursor: pointer;
+          transition: all var(--transition-fast);
+        }
+        .login-page__user-card:hover {
+          border-color: var(--primary);
+          background: var(--primary-light);
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        .login-page__user-avatar {
+          width: 48px;
+          height: 48px;
+          border-radius: 50%;
+          object-fit: cover;
+          flex-shrink: 0;
+        }
+        .login-page__user-info {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+        .login-page__user-name {
+          font-size: 15px;
+          font-weight: 600;
+          color: var(--text);
+        }
+        .login-page__user-pets {
+          font-size: 12px;
+          color: var(--text-secondary);
+        }
+        .login-page__user-pet-avatars {
+          display: flex;
+          gap: -4px;
+        }
+        .login-page__user-pet-avatar {
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          object-fit: cover;
+          border: 2px solid var(--bg-card);
+          margin-left: -8px;
+        }
+        .login-page__user-pet-avatar:first-child {
+          margin-left: 0;
         }
       `}</style>
     </div>

@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import type { MatchResult } from '../types';
-import { currentUser, nearbyPets } from '../data/mockData';
+import { getCurrentUser, getNearbyPets } from '../data/mockData';
 import {
   calculateAdvancedMatchScore,
   getDimensionLabel,
@@ -61,9 +61,15 @@ const distanceMap: Record<string, number> = {
   pet_108: 1.8,
   pet_109: 9.2,
   pet_110: 11.0,
+  pet_003: 6.5,
+  pet_004: 6.5,
+  pet_005: 3.8,
+  pet_006: 3.8,
 };
 
 export default function DashboardPage() {
+  const currentUser = getCurrentUser();
+  const nearbyPets = getNearbyPets();
   const navigate = useNavigate();
   const [selectedPetId, setSelectedPetId] = useState<string>(
     currentUser.pets[0]?.id || ''
@@ -103,7 +109,7 @@ export default function DashboardPage() {
         return r.pet.vaccineStatus === 'up_to_date' && r.pet.neutered;
       })
       .sort((a, b) => b.score - a.score);
-  }, [selectedPet, filterSize, filterEnergy, maxDistance, filterVerifiedOnly]);
+  }, [selectedPet, nearbyPets, filterSize, filterEnergy, maxDistance, filterVerifiedOnly]);
 
   // 计算当前选中匹配的维度分析
   const selectedDimensions = useMemo(() => {

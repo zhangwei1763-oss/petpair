@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { PetProfile } from '../types';
-import { currentUser } from '../data/mockData';
+import { getCurrentUser } from '../data/mockData';
 import { getMyPets, createPet, updatePet, deletePet } from '../api/pets';
 import { isSupabaseConfigured } from '../api/client';
 import PetProfileForm from '../components/PetProfileForm';
@@ -17,6 +17,7 @@ const personalityLabelMap: Record<string, string> = {
 };
 
 export default function PetProfilePage() {
+  const currentUser = getCurrentUser();
   const [pets, setPets] = useState<PetProfile[]>(currentUser.pets);
   const [editingPet, setEditingPet] = useState<PetProfile | null>(null);
   const [isAdding, setIsAdding] = useState(false);
@@ -28,7 +29,7 @@ export default function PetProfilePage() {
     if (isSupabaseConfigured) {
       // Supabase 模式下需要 user.id，从 localStorage 或全局状态获取
       // 这里通过 currentUser.id 作为 fallback
-      const userId = currentUser.id;
+      const userId = getCurrentUser().id;
       if (userId) {
         getMyPets(userId).then(setPets);
       }
@@ -58,7 +59,7 @@ export default function PetProfilePage() {
       } else {
         const newPet: PetProfile = {
           id: `pet_${Date.now()}`,
-          ownerId: currentUser.id,
+          ownerId: getCurrentUser().id,
           name: data.name || '',
           breed: data.breed || '',
           species: data.species || 'dog',

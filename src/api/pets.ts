@@ -1,6 +1,6 @@
 import { supabase, isSupabaseConfigured } from './client';
 import type { PetProfile } from '../types';
-import { currentUser, nearbyPets } from '../data/mockData';
+import { getCurrentUser, nearbyPets } from '../data/mockData';
 
 // 获取所有宠物（公开列表）
 export async function getAllPets(): Promise<PetProfile[]> {
@@ -15,7 +15,7 @@ export async function getAllPets(): Promise<PetProfile[]> {
 
 // 获取我的宠物
 export async function getMyPets(userId: string): Promise<PetProfile[]> {
-  if (!isSupabaseConfigured) return currentUser.pets;
+  if (!isSupabaseConfigured) return getCurrentUser().pets;
   const { data, error } = await supabase
     .from('pets')
     .select('*')
@@ -28,7 +28,7 @@ export async function getMyPets(userId: string): Promise<PetProfile[]> {
 // 获取宠物详情
 export async function getPetById(petId: string): Promise<PetProfile | null> {
   if (!isSupabaseConfigured) {
-    return nearbyPets.find(p => p.id === petId) || currentUser.pets.find(p => p.id === petId) || null;
+    return nearbyPets.find(p => p.id === petId) || getCurrentUser().pets.find(p => p.id === petId) || null;
   }
   const { data, error } = await supabase
     .from('pets')
@@ -43,6 +43,7 @@ export async function getPetById(petId: string): Promise<PetProfile | null> {
 export async function createPet(pet: Partial<PetProfile>): Promise<PetProfile> {
   if (!isSupabaseConfigured) {
     // Mock fallback
+    const currentUser = getCurrentUser();
     const newPet: PetProfile = {
       id: `pet_${Date.now()}`,
       name: pet.name || '新宠物',
@@ -93,6 +94,7 @@ export async function createPet(pet: Partial<PetProfile>): Promise<PetProfile> {
 // 更新宠物
 export async function updatePet(petId: string, updates: Partial<PetProfile>): Promise<PetProfile> {
   if (!isSupabaseConfigured) {
+    const currentUser = getCurrentUser();
     const idx = currentUser.pets.findIndex(p => p.id === petId);
     if (idx >= 0) {
       currentUser.pets[idx] = { ...currentUser.pets[idx], ...updates };
@@ -130,6 +132,7 @@ export async function updatePet(petId: string, updates: Partial<PetProfile>): Pr
 // 删除宠物
 export async function deletePet(petId: string): Promise<void> {
   if (!isSupabaseConfigured) {
+    const currentUser = getCurrentUser();
     const idx = currentUser.pets.findIndex(p => p.id === petId);
     if (idx >= 0) currentUser.pets.splice(idx, 1);
     return;

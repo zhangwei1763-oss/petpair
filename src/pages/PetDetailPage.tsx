@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import type { PetProfile } from '../types';
-import { nearbyPets, currentUser } from '../data/mockData';
+import { nearbyPets, getCurrentUser } from '../data/mockData';
 import {
   ArrowLeft,
   Send,
@@ -90,12 +90,13 @@ export default function PetDetailPage() {
   const { petId } = useParams<{ petId: string }>();
   const navigate = useNavigate();
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const currentUser = getCurrentUser();
 
   const pet: PetProfile | undefined = useMemo(() => {
     // Search in nearbyPets and currentUser's pets
     const allPets = [...nearbyPets, ...currentUser.pets];
     return allPets.find((p) => p.id === petId);
-  }, [petId]);
+  }, [petId, currentUser]);
 
   const isOwnPet = pet ? currentUser.pets.some((p) => p.id === pet.id) : false;
   const owner = pet ? ownerMap[pet.ownerId] : null;
@@ -320,8 +321,8 @@ export default function PetDetailPage() {
             >
               <div className="form-group">
                 <label>选择你的宠物</label>
-                <select className="form-select" defaultValue={currentUser.pets[0]?.id}>
-                  {currentUser.pets.map((p) => (
+                <select className="form-select" defaultValue={getCurrentUser().pets[0]?.id}>
+                  {getCurrentUser().pets.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name} ({p.breed})
                     </option>

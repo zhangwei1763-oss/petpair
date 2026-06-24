@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Invitation, PetProfile } from '../types';
-import { currentUser, nearbyPets, mockInvitations } from '../data/mockData';
+import { getCurrentUser, getNearbyPets, mockInvitations } from '../data/mockData';
 import InvitationCard from '../components/InvitationCard';
 import { Inbox, Send, X, PawPrint, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -14,6 +14,8 @@ const activityLabelMap: Record<string, string> = {
 };
 
 export default function InvitationsPage() {
+  const currentUser = getCurrentUser();
+  const nearbyPets = getNearbyPets();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'received' | 'sent'>('received');
   const [invitations, setInvitations] = useState<Invitation[]>(mockInvitations);

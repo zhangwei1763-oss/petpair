@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import type { Message } from '../types';
-import { currentUser, nearbyPets, mockMessages } from '../data/mockData';
+import { getCurrentUser, getNearbyPets, mockMessages } from '../data/mockData';
 import MessageBubble from '../components/MessageBubble';
 import { summonPawPal } from '../api/ai';
 import { MessageCircle, Send, ArrowLeft, Sparkles } from 'lucide-react';
@@ -15,11 +15,19 @@ interface Conversation {
 }
 
 export default function MessagesPage() {
+  const currentUser = getCurrentUser();
+  const nearbyPets = getNearbyPets();
+
   const [conversations, setConversations] = useState<Conversation[]>(() => {
     // Group messages by conversation partner
     const convMap = new Map<string, Message[]>();
 
-    mockMessages.forEach((msg) => {
+    // 只过滤与当前用户相关的消息
+    const userMessages = mockMessages.filter(
+      (msg) => msg.senderId === currentUser.id || msg.receiverId === currentUser.id
+    );
+
+    userMessages.forEach((msg) => {
       const partnerId =
         msg.senderId === currentUser.id ? msg.receiverId : msg.senderId;
       if (!convMap.has(partnerId)) {
@@ -109,7 +117,7 @@ export default function MessagesPage() {
     sendTimeoutRef.current = setTimeout(() => {
       setIsSending(false);
     }, 800);
-  }, [inputText, activeConv, isSending]);
+  }, [inputText, activeConv, isSending, currentUser.id]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -225,7 +233,7 @@ export default function MessagesPage() {
     } finally {
       setIsAiActive(false);
     }
-  }, [activeConv, isAiActive]);
+  }, [activeConv, isAiActive, currentUser.id, currentUser.pets, nearbyPets]);
 
   const currentConv = conversations.find((c) => c.userId === activeConv?.userId);
 

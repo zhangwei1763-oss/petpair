@@ -10,71 +10,228 @@ import type {
   UserStats,
 } from '../types';
 
-// ==================== 当前用户 ====================
+// ==================== 预置用户数据 ====================
 
-export const currentUser: User = {
-  id: 'user_001',
-  name: '林小萌',
-  phone: '13800138000',
-  avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop&crop=face',
-  location: {
-    city: '上海',
-    district: '徐汇区',
-    lat: 31.1884,
-    lng: 121.4366,
+const user1Pets: PetProfile[] = [
+  {
+    id: 'pet_001',
+    ownerId: 'user_001',
+    name: '旺财',
+    breed: '金毛寻回犬',
+    species: 'dog',
+    age: 3,
+    gender: 'male',
+    weight: 32,
+    size: 'large',
+    neutered: true,
+    personalityTags: ['lively', 'gentle', 'clingy'],
+    energyLevel: 'high',
+    activityPreferences: ['outdoor_run', 'walk', 'water', 'hiking'],
+    socialPreferences: ['big_dogs', 'small_dogs', 'cats'],
+    vaccineStatus: 'up_to_date',
+    photos: [
+      'https://images.unsplash.com/photo-1552053831-71594a27632d?w=400&h=400&fit=crop',
+      'https://images.unsplash.com/photo-1552053831-71594a27632d?w=400&h=400&fit=crop',
+      'https://images.unsplash.com/photo-1552053831-71594a27632d?w=400&h=400&fit=crop',
+    ],
+    bio: '超级热情的金毛，见到任何小伙伴都想去打招呼，最喜欢在水里游泳和捡球！',
   },
-  pets: [
-    {
-      id: 'pet_001',
-      ownerId: 'user_001',
-      name: '旺财',
-      breed: '金毛寻回犬',
-      species: 'dog',
-      age: 3,
-      gender: 'male',
-      weight: 32,
-      size: 'large',
-      neutered: true,
-      personalityTags: ['lively', 'gentle', 'clingy'],
-      energyLevel: 'high',
-      activityPreferences: ['outdoor_run', 'walk', 'water', 'hiking'],
-      socialPreferences: ['big_dogs', 'small_dogs', 'cats'],
-      vaccineStatus: 'up_to_date',
-      photos: [
-        'https://images.unsplash.com/photo-1552053831-71594a27632d?w=400&h=400&fit=crop',
-        'https://images.unsplash.com/photo-1552053831-71594a27632d?w=400&h=400&fit=crop',
-        'https://images.unsplash.com/photo-1552053831-71594a27632d?w=400&h=400&fit=crop',
-      ],
-      bio: '超级热情的金毛，见到任何小伙伴都想去打招呼，最喜欢在水里游泳和捡球！',
-    },
-    {
-      id: 'pet_002',
-      ownerId: 'user_001',
-      name: '团子',
-      breed: '英国短毛猫',
-      species: 'cat',
-      age: 2,
-      gender: 'female',
-      weight: 4.5,
-      size: 'small',
-      neutered: true,
-      personalityTags: ['gentle', 'independent'],
-      energyLevel: 'low',
-      activityPreferences: ['indoor_play'],
-      socialPreferences: ['cats', 'quiet'],
-      vaccineStatus: 'up_to_date',
-      photos: [
-        'https://images.unsplash.com/photo-1573865526739-10659fec78a5?w=400&h=400&fit=crop',
-        'https://images.unsplash.com/photo-1573865526739-10659fec78a5?w=400&h=400&fit=crop',
-      ],
-      bio: '安静优雅的英短蓝猫，喜欢趴在窗台看鸟，偶尔会跟逗猫棒玩一会儿。',
-    },
-  ],
-  createdAt: '2025-06-15T10:00:00Z',
-};
+  {
+    id: 'pet_002',
+    ownerId: 'user_001',
+    name: '团子',
+    breed: '英国短毛猫',
+    species: 'cat',
+    age: 2,
+    gender: 'female',
+    weight: 4.5,
+    size: 'small',
+    neutered: true,
+    personalityTags: ['gentle', 'independent'],
+    energyLevel: 'low',
+    activityPreferences: ['indoor_play'],
+    socialPreferences: ['cats', 'quiet'],
+    vaccineStatus: 'up_to_date',
+    photos: [
+      'https://images.unsplash.com/photo-1573865526739-10659fec78a5?w=400&h=400&fit=crop',
+      'https://images.unsplash.com/photo-1573865526739-10659fec78a5?w=400&h=400&fit=crop',
+    ],
+    bio: '安静优雅的英短蓝猫，喜欢趴在窗台看鸟，偶尔会跟逗猫棒玩一会儿。',
+  },
+];
 
-// ==================== 附近宠物 ====================
+const user2Pets: PetProfile[] = [
+  {
+    id: 'pet_003',
+    ownerId: 'user_002',
+    name: '奥利奥',
+    breed: '边境牧羊犬',
+    species: 'dog',
+    age: 2,
+    gender: 'male',
+    weight: 22,
+    size: 'medium',
+    neutered: true,
+    personalityTags: ['lively', 'independent'],
+    energyLevel: 'high',
+    activityPreferences: ['outdoor_run', 'hiking', 'walk'],
+    socialPreferences: ['big_dogs'],
+    vaccineStatus: 'up_to_date',
+    photos: [
+      'https://images.unsplash.com/photo-1503256207526-0d5d80fa2f47?w=400&h=400&fit=crop',
+    ],
+    bio: '精力旺盛的边牧，每天需要大量运动，最喜欢飞盘和敏捷训练。',
+  },
+  {
+    id: 'pet_004',
+    ownerId: 'user_002',
+    name: '雪球',
+    breed: '萨摩耶',
+    species: 'dog',
+    age: 1,
+    gender: 'female',
+    weight: 20,
+    size: 'large',
+    neutered: false,
+    personalityTags: ['gentle', 'lively'],
+    energyLevel: 'medium',
+    activityPreferences: ['walk', 'outdoor_run'],
+    socialPreferences: ['big_dogs', 'small_dogs'],
+    vaccineStatus: 'partial',
+    photos: [
+      'https://images.unsplash.com/photo-1529429617124-95b109e86bb8?w=400&h=400&fit=crop',
+    ],
+    bio: '微笑天使萨摩耶，性格温柔又爱玩，毛发蓬松像一朵大棉花糖。',
+  },
+];
 
+const user3Pets: PetProfile[] = [
+  {
+    id: 'pet_005',
+    ownerId: 'user_003',
+    name: '奶茶',
+    breed: '布偶猫',
+    species: 'cat',
+    age: 3,
+    gender: 'female',
+    weight: 4,
+    size: 'small',
+    neutered: true,
+    personalityTags: ['gentle', 'clingy', 'timid'],
+    energyLevel: 'low',
+    activityPreferences: ['indoor_play'],
+    socialPreferences: ['cats', 'quiet'],
+    vaccineStatus: 'up_to_date',
+    photos: [
+      'https://images.unsplash.com/photo-1513245543132-31f507417b26?w=400&h=400&fit=crop',
+    ],
+    bio: '胆小但粘人的布偶猫，喜欢被抱着，对陌生人会比较害羞。',
+  },
+  {
+    id: 'pet_006',
+    ownerId: 'user_003',
+    name: '可乐',
+    breed: '柯基',
+    species: 'dog',
+    age: 2,
+    gender: 'male',
+    weight: 11,
+    size: 'small',
+    neutered: true,
+    personalityTags: ['lively', 'clingy'],
+    energyLevel: 'medium',
+    activityPreferences: ['walk', 'indoor_play'],
+    socialPreferences: ['small_dogs', 'big_dogs'],
+    vaccineStatus: 'up_to_date',
+    photos: [
+      'https://images.unsplash.com/photo-1612536053381-696179b53600?w=400&h=400&fit=crop',
+    ],
+    bio: '小短腿柯基，虽然腿短但跑起来超快，最喜欢追球和撒娇。',
+  },
+];
+
+export const mockUsers: User[] = [
+  {
+    id: 'user_001',
+    name: '林小萌',
+    phone: '13800138000',
+    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop&crop=face',
+    location: {
+      city: '上海',
+      district: '徐汇区',
+      lat: 31.1884,
+      lng: 121.4366,
+    },
+    pets: user1Pets,
+    createdAt: '2025-06-15T10:00:00Z',
+  },
+  {
+    id: 'user_002',
+    name: '陈大伟',
+    phone: '13900139000',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=face',
+    location: {
+      city: '上海',
+      district: '浦东新区',
+      lat: 31.2304,
+      lng: 121.5447,
+    },
+    pets: user2Pets,
+    createdAt: '2025-06-16T10:00:00Z',
+  },
+  {
+    id: 'user_003',
+    name: '王小雅',
+    phone: '13700137000',
+    avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&h=200&fit=crop&crop=face',
+    location: {
+      city: '上海',
+      district: '静安区',
+      lat: 31.2356,
+      lng: 121.4581,
+    },
+    pets: user3Pets,
+    createdAt: '2025-06-17T10:00:00Z',
+  },
+];
+
+// ==================== 当前用户（默认值，向后兼容） ====================
+
+export const currentUser: User = mockUsers[0];
+
+// ==================== 用户管理函数 ====================
+
+const CURRENT_USER_KEY = 'petpair_current_user_id';
+
+export function getCurrentUser(): User {
+  if (typeof window === 'undefined') return mockUsers[0];
+  const storedId = localStorage.getItem(CURRENT_USER_KEY);
+  if (storedId) {
+    const user = mockUsers.find((u) => u.id === storedId);
+    if (user) return user;
+  }
+  return mockUsers[0];
+}
+
+export function setCurrentUser(userId: string): void {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(CURRENT_USER_KEY, userId);
+  }
+}
+
+export function clearCurrentUser(): void {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem(CURRENT_USER_KEY);
+  }
+}
+
+export function getAllUsers(): User[] {
+  return mockUsers;
+}
+
+// ==================== 附近宠物（所有非当前用户的宠物） ====================
+
+// 保留原始的 nearbyPets 用于向后兼容，但动态排除当前用户宠物
 export const nearbyPets: PetProfile[] = [
   {
     id: 'pet_101',
@@ -298,6 +455,18 @@ export const nearbyPets: PetProfile[] = [
   },
 ];
 
+// 辅助函数：获取附近宠物（排除当前用户的宠物）
+export function getNearbyPets(): PetProfile[] {
+  const current = getCurrentUser();
+  // 从 mockUsers 中排除当前用户的宠物，加上原始 nearbyPets
+  const otherMockPets = mockUsers
+    .filter((u) => u.id !== current.id)
+    .flatMap((u) => u.pets);
+  // 过滤掉 nearbyPets 中属于当前用户的宠物
+  const filteredNearby = nearbyPets.filter((p) => p.ownerId !== current.id);
+  return [...otherMockPets, ...filteredNearby];
+}
+
 // ==================== 模拟邀约 ====================
 
 export const mockInvitations: Invitation[] = [
@@ -341,6 +510,47 @@ export const mockInvitations: Invitation[] = [
     message: '想给团子找个小伙伴一起玩，大橘愿意来吗？',
     createdAt: '2026-06-08T09:00:00Z',
     respondedAt: '2026-06-08T18:00:00Z',
+  },
+  // 新增：用户之间的交互邀约
+  {
+    id: 'inv_004',
+    fromUserId: 'user_002',
+    toUserId: 'user_001',
+    fromPetId: 'pet_003',
+    toPetId: 'pet_001',
+    status: 'pending',
+    proposedTime: '2026-06-25T09:00:00Z',
+    proposedLocation: '浦东世纪公园',
+    activityType: 'outdoor_run',
+    message: '奥利奥想找个跑步搭子，旺财一起来吗？',
+    createdAt: '2026-06-22T10:00:00Z',
+  },
+  {
+    id: 'inv_005',
+    fromUserId: 'user_003',
+    toUserId: 'user_002',
+    fromPetId: 'pet_006',
+    toPetId: 'pet_004',
+    status: 'pending',
+    proposedTime: '2026-06-26T15:00:00Z',
+    proposedLocation: '静安公园',
+    activityType: 'walk',
+    message: '可乐想和雪球一起散步，可以吗？',
+    createdAt: '2026-06-23T08:00:00Z',
+  },
+  {
+    id: 'inv_006',
+    fromUserId: 'user_001',
+    toUserId: 'user_003',
+    fromPetId: 'pet_001',
+    toPetId: 'pet_006',
+    status: 'accepted',
+    proposedTime: '2026-06-20T10:00:00Z',
+    proposedLocation: '徐汇公园',
+    activityType: 'walk',
+    message: '旺财和可乐一起玩吧！',
+    createdAt: '2026-06-18T09:00:00Z',
+    respondedAt: '2026-06-18T12:00:00Z',
   },
 ];
 
@@ -409,6 +619,61 @@ export const mockMessages: Message[] = [
     content: '是的！大橘平时不太爱动，今天居然主动去追逗猫棒了，看来有小伙伴激励很重要',
     type: 'text',
     createdAt: '2026-06-10T16:30:00Z',
+  },
+  // 新增：用户之间的消息
+  {
+    id: 'msg_008',
+    senderId: 'user_002',
+    receiverId: 'user_001',
+    invitationId: 'inv_004',
+    content: '你好！奥利奥最近特别想找个跑步搭子，旺财有兴趣吗？',
+    type: 'text',
+    createdAt: '2026-06-22T10:05:00Z',
+  },
+  {
+    id: 'msg_009',
+    senderId: 'user_001',
+    receiverId: 'user_002',
+    invitationId: 'inv_004',
+    content: '旺财当然愿意！边牧和金毛一起跑一定很欢乐',
+    type: 'text',
+    createdAt: '2026-06-22T10:15:00Z',
+  },
+  {
+    id: 'msg_010',
+    senderId: 'user_003',
+    receiverId: 'user_002',
+    invitationId: 'inv_005',
+    content: '你好！可乐想和雪球一起散步，可以吗？',
+    type: 'text',
+    createdAt: '2026-06-23T08:05:00Z',
+  },
+  {
+    id: 'msg_011',
+    senderId: 'user_002',
+    receiverId: 'user_003',
+    invitationId: 'inv_005',
+    content: '雪球很乐意！柯基和萨摩耶一起一定很有趣',
+    type: 'text',
+    createdAt: '2026-06-23T08:20:00Z',
+  },
+  {
+    id: 'msg_012',
+    senderId: 'user_001',
+    receiverId: 'user_003',
+    invitationId: 'inv_006',
+    content: '周末带旺财去徐汇公园，可乐一起来玩吧！',
+    type: 'text',
+    createdAt: '2026-06-18T09:05:00Z',
+  },
+  {
+    id: 'msg_013',
+    senderId: 'user_003',
+    receiverId: 'user_001',
+    invitationId: 'inv_006',
+    content: '好的！可乐最喜欢追球了，让旺财准备好哦',
+    type: 'text',
+    createdAt: '2026-06-18T09:30:00Z',
   },
 ];
 
@@ -687,4 +952,3 @@ export const mockUserStats: UserStats = {
     { week: '6/22', meetups: 2 },
   ],
 };
-

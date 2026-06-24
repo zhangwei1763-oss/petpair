@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { nearbyPets, currentUser } from '../data/mockData';
+import { nearbyPets, getCurrentUser } from '../data/mockData';
 import { calculateAdvancedMatchScore, getMatchLabel, getCompatibilityAdvice } from '../utils/matchEngine';
 import { generateMatchExplanation } from '../api/ai';
 import { loadAMapAPI, isAMapConfigured } from '../utils/amapLoader';
@@ -69,6 +69,7 @@ export default function MapExplorePage() {
   const mapInstanceRef = useRef<AMap.Map | null>(null);
   const markersRef = useRef<AMap.Marker[]>([]);
 
+  const currentUser = getCurrentUser();
   const myPet = currentUser.pets[0];
 
   // === 基础筛选 ===

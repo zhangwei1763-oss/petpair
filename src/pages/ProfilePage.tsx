@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { currentUser, mockInvitations, mockReviews } from '../data/mockData';
+import { getCurrentUser, mockInvitations, mockReviews } from '../data/mockData';
 import {
   User,
   Bell,
@@ -35,6 +35,7 @@ type ModalType = 'editProfile' | 'notifications' | 'privacy' | 'about' | null;
 
 export default function ProfilePage({ onLogout }: { onLogout: () => void }) {
   const navigate = useNavigate();
+  const currentUser = getCurrentUser();
   const [activeModal, setActiveModal] = useState<ModalType>(null);
   const [userName, setUserName] = useState(currentUser.name);
   const [userPhone, setUserPhone] = useState(currentUser.phone);

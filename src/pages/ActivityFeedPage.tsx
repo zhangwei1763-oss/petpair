@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { ActivityPost } from '../types';
-import { mockActivityPosts, currentUser } from '../data/mockData';
+import { mockActivityPosts, getCurrentUser } from '../data/mockData';
 import { getPosts, toggleLike, addComment } from '../api/posts';
 import { isSupabaseConfigured } from '../api/client';
 import {
@@ -27,6 +27,7 @@ function formatTime(dateStr: string) {
 }
 
 export default function ActivityFeedPage() {
+  const currentUser = getCurrentUser();
   const [posts, setPosts] = useState<ActivityPost[]>(mockActivityPosts);
   const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});

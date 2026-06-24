@@ -20,7 +20,7 @@ import LeaderboardPage from './pages/LeaderboardPage'
 import StatsPage from './pages/StatsPage'
 import ThemePage from './pages/ThemePage'
 import ErrorBoundary from './components/ErrorBoundary'
-import { currentUser } from './data/mockData'
+import { getCurrentUser, setCurrentUser, clearCurrentUser } from './data/mockData'
 import { isSupabaseConfigured } from './api/client'
 import { getSession, onAuthStateChange, getUserProfile, createUserProfile, signOut } from './api/auth'
 
@@ -84,16 +84,22 @@ function App() {
       return () => { unsubscribeRef.current?.(); };
     } else {
       // Mock 模式
-      setUser(currentUser);
+      const mockUser = getCurrentUser();
+      setUser(mockUser);
       setIsLoggedIn(true);
       setLoading(false);
     }
   }, []);
 
-  const handleLogin = (userData?: RegisteredUserData) => {
+  const handleLogin = (userData?: RegisteredUserData, selectedUserId?: string) => {
     setIsLoggedIn(true);
     if (userData) {
       setRegisteredUser(userData);
+    }
+    if (selectedUserId) {
+      setCurrentUser(selectedUserId);
+      const mockUser = getCurrentUser();
+      setUser(mockUser);
     }
   };
 
@@ -105,6 +111,7 @@ function App() {
     setIsLoggedIn(false);
     setRegisteredUser(null);
     localStorage.removeItem('petpair_registered_user');
+    clearCurrentUser();
   };
 
   if (loading) {
