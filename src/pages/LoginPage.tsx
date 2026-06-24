@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Lock, LogIn, Mail, User, Eye, EyeOff } from 'lucide-react';
+import { Lock, LogIn, Mail, Eye, EyeOff } from 'lucide-react';
 import { signInWithEmail } from '../api/auth';
 import { isSupabaseConfigured } from '../api/client';
 import { getAllUsers, setCurrentUser } from '../data/mockData';
@@ -23,11 +23,11 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
   const mockUsers = getAllUsers();
 
-  // 预置用户账号密码映射
+  // 预置用户邮箱密码映射
   const mockCredentials: Record<string, string> = {
-    'linxiaomeng': 'user_001',
-    'chendawei': 'user_002',
-    'wangxiaoya': 'user_003',
+    'linxiaomeng@petpair.com': 'user_001',
+    'chendawei@petpair.com': 'user_002',
+    'wangxiaoya@petpair.com': 'user_003',
   };
 
   // Supabase 邮箱+密码登录/注册
@@ -70,18 +70,25 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     e.preventDefault();
     setError('');
 
-    const username = mockUsername.trim().toLowerCase();
+    const emailInput = mockUsername.trim().toLowerCase();
     const pwd = mockPassword.trim();
 
-    if (!username || !pwd) {
-      setError('请输入用户名和密码');
+    if (!emailInput || !pwd) {
+      setError('请输入邮箱和密码');
       return;
     }
 
-    // 验证用户名密码
-    const userId = mockCredentials[username];
+    // 邮箱格式校验
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(emailInput)) {
+      setError('请输入正确的邮箱格式');
+      return;
+    }
+
+    // 验证邮箱是否存在
+    const userId = mockCredentials[emailInput];
     if (!userId) {
-      setError('用户名不存在');
+      setError('账号不存在');
       return;
     }
 
@@ -173,16 +180,16 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             </button>
           </form>
         ) : (
-          /* Mock 模式：用户名密码登录 */
+          /* Mock 模式：邮箱密码登录 */
           <form className="login-page__form" onSubmit={handleMockLogin}>
             <div className="form-group">
-              <label>用户名</label>
+              <label>邮箱</label>
               <div className="login-page__input-wrapper">
-                <User size={18} className="login-page__input-icon" />
+                <Mail size={18} className="login-page__input-icon" />
                 <input
                   className="form-input login-page__input"
-                  type="text"
-                  placeholder="请输入用户名"
+                  type="email"
+                  placeholder="请输入邮箱"
                   value={mockUsername}
                   onChange={(e) => {
                     setMockUsername(e.target.value);
@@ -241,12 +248,12 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                     key={user.id}
                     className="login-page__demo-item"
                     onClick={() => {
-                      const nameMap: Record<string, string> = {
-                        'user_001': 'linxiaomeng',
-                        'user_002': 'chendawei',
-                        'user_003': 'wangxiaoya',
+                      const emailMap: Record<string, string> = {
+                        'user_001': 'linxiaomeng@petpair.com',
+                        'user_002': 'chendawei@petpair.com',
+                        'user_003': 'wangxiaoya@petpair.com',
                       };
-                      setMockUsername(nameMap[user.id] || '');
+                      setMockUsername(emailMap[user.id] || '');
                       setMockPassword('123456');
                       if (error) setError('');
                     }}
@@ -255,7 +262,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                     <div className="login-page__demo-info">
                       <span className="login-page__demo-name">{user.name}</span>
                       <span className="login-page__demo-cred">
-                        {user.id === 'user_001' ? 'linxiaomeng' : user.id === 'user_002' ? 'chendawei' : 'wangxiaoya'} / 123456
+                        {user.id === 'user_001' ? 'linxiaomeng@petpair.com' : user.id === 'user_002' ? 'chendawei@petpair.com' : 'wangxiaoya@petpair.com'} / 123456
                       </span>
                     </div>
                   </div>
