@@ -178,6 +178,50 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
               )}
               {loading ? '处理中...' : '登录'}
             </button>
+
+            <div className="login-page__demo-accounts">
+              <p className="login-page__demo-title">演示账号（快捷登录）</p>
+              <div className="login-page__demo-list">
+                {mockUsers.map((user) => (
+                  <div
+                    key={user.id}
+                    className="login-page__demo-item"
+                    onClick={() => {
+                      const emailMap: Record<string, string> = {
+                        'user_001': 'linxiaomeng@petpair.com',
+                        'user_002': 'chendawei@petpair.com',
+                        'user_003': 'wangxiaoya@petpair.com',
+                      };
+                      const demoEmail = emailMap[user.id] || '';
+                      setEmail(demoEmail);
+                      setPassword('123456');
+                      if (error) setError('');
+                      // 自动触发 Supabase 登录
+                      if (isSupabaseConfigured) {
+                        setLoading(true);
+                        setTimeout(() => {
+                          setLoading(false);
+                          const demoUid = mockCredentials[demoEmail];
+                          if (demoUid) {
+                            setCurrentUser(demoUid);
+                            onLogin(undefined, demoUid);
+                            navigate('/dashboard');
+                          }
+                        }, 600);
+                      }
+                    }}
+                  >
+                    <img className="login-page__demo-avatar" src={user.avatar} alt={user.name} />
+                    <div className="login-page__demo-info">
+                      <span className="login-page__demo-name">{user.name}</span>
+                      <span className="login-page__demo-cred">
+                        {user.id === 'user_001' ? 'linxiaomeng@petpair.com' : user.id === 'user_002' ? 'chendawei@petpair.com' : 'wangxiaoya@petpair.com'} / 123456
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </form>
         ) : (
           /* Mock 模式：邮箱密码登录 */
