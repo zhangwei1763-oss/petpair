@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import type { Message } from '../types';
-import { getCurrentUser, getNearbyPets, mockMessages } from '../data/mockData';
+import { getCurrentUser, getNearbyPets, initInteractionData, getAllMessages, saveAllMessages } from '../data/mockData';
 import MessageBubble from '../components/MessageBubble';
 import { summonPawPal } from '../api/ai';
 import { MessageCircle, Send, ArrowLeft, Sparkles } from 'lucide-react';
@@ -15,6 +15,7 @@ interface Conversation {
 }
 
 export default function MessagesPage() {
+  initInteractionData();
   const currentUser = getCurrentUser();
   const nearbyPets = getNearbyPets();
 
@@ -23,7 +24,8 @@ export default function MessagesPage() {
     const convMap = new Map<string, Message[]>();
 
     // 只过滤与当前用户相关的消息
-    const userMessages = mockMessages.filter(
+    const allMessages = getAllMessages();
+    const userMessages = allMessages.filter(
       (msg) => msg.senderId === currentUser.id || msg.receiverId === currentUser.id
     );
 
@@ -98,8 +100,8 @@ export default function MessagesPage() {
       createdAt: new Date().toISOString(),
     };
 
-    setConversations((prev) =>
-      prev.map((conv) =>
+    setConversations((prev) => {
+      const updated = prev.map((conv) =>
         conv.userId === activeConv.userId
           ? {
               ...conv,
@@ -108,8 +110,12 @@ export default function MessagesPage() {
               lastTime: newMsg.createdAt,
             }
           : conv
-      )
-    );
+      );
+      // 保存所有消息到 localStorage
+      const allMsgs = updated.flatMap((c) => c.messages);
+      saveAllMessages(allMsgs);
+      return updated;
+    });
 
     setInputText('');
 
@@ -190,8 +196,8 @@ export default function MessagesPage() {
         isAi: true,
       };
 
-      setConversations((prev) =>
-        prev.map((conv) =>
+      setConversations((prev) => {
+        const updated = prev.map((conv) =>
           conv.userId === activeConv.userId
             ? {
                 ...conv,
@@ -203,8 +209,12 @@ export default function MessagesPage() {
                 lastTime: aiMsg.createdAt,
               }
             : conv
-        )
-      );
+        );
+        // 保存所有消息到 localStorage
+        const allMsgs = updated.flatMap((c) => c.messages);
+        saveAllMessages(allMsgs);
+        return updated;
+      });
     } catch {
       // 失败时也替换 loading
       const failMsg: Message = {
@@ -217,8 +227,8 @@ export default function MessagesPage() {
         isAi: true,
       };
 
-      setConversations((prev) =>
-        prev.map((conv) =>
+      setConversations((prev) => {
+        const updated = prev.map((conv) =>
           conv.userId === activeConv.userId
             ? {
                 ...conv,
@@ -228,8 +238,12 @@ export default function MessagesPage() {
                 ],
               }
             : conv
-        )
-      );
+        );
+        // 保存所有消息到 localStorage
+        const allMsgs = updated.flatMap((c) => c.messages);
+        saveAllMessages(allMsgs);
+        return updated;
+      });
     } finally {
       setIsAiActive(false);
     }

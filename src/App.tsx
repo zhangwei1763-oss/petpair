@@ -20,7 +20,7 @@ import LeaderboardPage from './pages/LeaderboardPage'
 import StatsPage from './pages/StatsPage'
 import ThemePage from './pages/ThemePage'
 import ErrorBoundary from './components/ErrorBoundary'
-import { getCurrentUser, setCurrentUser, clearCurrentUser } from './data/mockData'
+import { getCurrentUser, setCurrentUser, clearCurrentUser, initInteractionData } from './data/mockData'
 import { isSupabaseConfigured } from './api/client'
 import { getSession, onAuthStateChange, getUserProfile, createUserProfile, signOut } from './api/auth'
 
@@ -37,6 +37,9 @@ function App() {
   const unsubscribeRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
+    // 初始化跨用户交互数据持久化
+    initInteractionData();
+
     // 从 localStorage 恢复注册用户信息
     const storedUser = localStorage.getItem('petpair_registered_user');
     if (storedUser) {

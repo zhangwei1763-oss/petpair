@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Invitation, PetProfile } from '../types';
-import { getCurrentUser, getNearbyPets, mockInvitations } from '../data/mockData';
+import { getCurrentUser, getNearbyPets, initInteractionData, getAllInvitations, saveAllInvitations } from '../data/mockData';
 import InvitationCard from '../components/InvitationCard';
 import { Inbox, Send, X, PawPrint, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -14,11 +14,12 @@ const activityLabelMap: Record<string, string> = {
 };
 
 export default function InvitationsPage() {
+  initInteractionData();
   const currentUser = getCurrentUser();
   const nearbyPets = getNearbyPets();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'received' | 'sent'>('received');
-  const [invitations, setInvitations] = useState<Invitation[]>(mockInvitations);
+  const [invitations, setInvitations] = useState<Invitation[]>(() => getAllInvitations());
   const [showNewInvite, setShowNewInvite] = useState(false);
   const [newInviteTarget, setNewInviteTarget] = useState<PetProfile | null>(null);
   const [newInviteForm, setNewInviteForm] = useState({
@@ -39,23 +40,27 @@ export default function InvitationsPage() {
   const sent = invitations.filter((inv) => inv.fromUserId === currentUser.id);
 
   const handleAccept = (id: string) => {
-    setInvitations((prev) =>
-      prev.map((inv) =>
+    setInvitations((prev) => {
+      const updated = prev.map((inv) =>
         inv.id === id
           ? { ...inv, status: 'accepted' as const, respondedAt: new Date().toISOString() }
           : inv
-      )
-    );
+      );
+      saveAllInvitations(updated);
+      return updated;
+    });
   };
 
   const handleReject = (id: string) => {
-    setInvitations((prev) =>
-      prev.map((inv) =>
+    setInvitations((prev) => {
+      const updated = prev.map((inv) =>
         inv.id === id
           ? { ...inv, status: 'rejected' as const, respondedAt: new Date().toISOString() }
           : inv
-      )
-    );
+      );
+      saveAllInvitations(updated);
+      return updated;
+    });
   };
 
   const handleNewInvite = (e: React.FormEvent) => {
@@ -76,7 +81,11 @@ export default function InvitationsPage() {
       createdAt: new Date().toISOString(),
     };
 
-    setInvitations((prev) => [newInv, ...prev]);
+    setInvitations((prev) => {
+      const updated = [newInv, ...prev];
+      saveAllInvitations(updated);
+      return updated;
+    });
     setShowNewInvite(false);
     setNewInviteTarget(null);
     setNewInviteForm({ time: '', location: '', activityType: 'walk', message: '' });

@@ -932,6 +932,50 @@ export const mockLeaderboard: LeaderboardEntry[] = [
   { rank: 10, petId: 'pet_102', petName: '豆豆', petPhoto: 'https://images.unsplash.com/photo-1612536053381-696179b53600?w=400&h=400&fit=crop', ownerName: '豆豆妈', ownerAvatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop&crop=face', score: 5200, meetups: 8, rating: 4.3, breed: '柯基' },
 ];
 
+// ==================== 跨用户交互数据持久化 ====================
+
+const INVITATIONS_KEY = 'petpair_invitations';
+const MESSAGES_KEY = 'petpair_messages';
+
+// 初始化：如果 localStorage 中没有数据，用 mockInvitations/mockMessages 初始化
+export function initInteractionData() {
+  if (typeof window === 'undefined') return;
+  if (!localStorage.getItem(INVITATIONS_KEY)) {
+    localStorage.setItem(INVITATIONS_KEY, JSON.stringify(mockInvitations));
+  }
+  if (!localStorage.getItem(MESSAGES_KEY)) {
+    localStorage.setItem(MESSAGES_KEY, JSON.stringify(mockMessages));
+  }
+}
+
+// 获取所有邀约（从 localStorage）
+export function getAllInvitations(): Invitation[] {
+  if (typeof window === 'undefined') return mockInvitations;
+  const data = localStorage.getItem(INVITATIONS_KEY);
+  return data ? JSON.parse(data) : mockInvitations;
+}
+
+// 保存所有邀约（到 localStorage）
+export function saveAllInvitations(invitations: Invitation[]) {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(INVITATIONS_KEY, JSON.stringify(invitations));
+  }
+}
+
+// 获取所有消息（从 localStorage）
+export function getAllMessages(): Message[] {
+  if (typeof window === 'undefined') return mockMessages;
+  const data = localStorage.getItem(MESSAGES_KEY);
+  return data ? JSON.parse(data) : mockMessages;
+}
+
+// 保存所有消息（到 localStorage）
+export function saveAllMessages(messages: Message[]) {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(MESSAGES_KEY, JSON.stringify(messages));
+  }
+}
+
 // ==================== 用户统计 ====================
 
 export const mockUserStats: UserStats = {
