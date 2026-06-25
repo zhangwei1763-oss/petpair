@@ -1,5 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { Notification } from '../types';
+import { getCurrentUser } from '../api/auth';
+import {
+  getNotifications,
+  markNotificationRead,
+  markAllNotificationsRead,
+  deleteNotification,
+} from '../api/notifications';
 import {
   Heart,
   Send,
@@ -55,27 +62,61 @@ const typeLabelMap: Record<NotifType, string> = {
 };
 
 export default function NotificationsPage() {
-  const [notifications, setNotifications] =
-    useState<Notification[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeType, setActiveType] = useState<'all' | NotifType>('all');
+
+  // 加载通知
+  const loadNotifications = async () => {
+    try {
+      const authUser = await getCurrentUser();
+      if (!authUser?.id) return;
+      const data = await getNotifications(authUser.id);
+      setNotifications(data);
+    } catch (e) {
+      console.error('加载通知失败', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadNotifications();
+  }, []);
+
+  // 筛选
+  const filtered = activeType === 'all'
+    ? notifications
+    : notifications.filter((n) => n.type === activeType);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
-  const handleMarkRead = (id: string) => {
+  const handleMarkRead = async (id: string) => {
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, read: true } : n))
     );
+    await markNotificationRead(id);
   };
 
-  const handleMarkAllRead = () => {
+  const handleMarkAllRead = async () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    try {
+      const authUser = await getCurrentUser();
+      if (authUser?.id) {
+        await markAllNotificationsRead(authUser.id);
+      }
+    } catch (e) {
+      console.error(e);
+    }
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     setNotifications((prev) => prev.filter((n) => n.id !== id));
+    await deleteNotification(id);
   };
 
-  // Sort by time descending
-  const sortedNotifications = [...notifications].sort(
+  // 按时间排序
+  const sorted = [...filtered].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
 
@@ -99,12 +140,19 @@ export default function NotificationsPage() {
 
       {/* Filter Tabs */}
       <div className="notifications-page__tabs">
-        <button className="notifications-page__tab notifications-page__tab--active">
+        <button
+          className={`notifications-page__tab ${activeType === 'all' ? 'notifications-page__tab--active' : ''}`}
+          onClick={() => setActiveType('all')}
+        >
           全部
         </button>
         {(['match', 'invitation', 'message', 'system', 'review', 'like'] as NotifType[]).map(
           (type) => (
-            <button key={type} className="notifications-page__tab">
+            <button
+              key={type}
+              className={`notifications-page__tab ${activeType === type ? 'notifications-page__tab--active' : ''}`}
+              onClick={() => setActiveType(type)}
+            >
               {typeLabelMap[type]}
             </button>
           )
@@ -113,14 +161,18 @@ export default function NotificationsPage() {
 
       {/* Notification List */}
       <div className="notifications-page__list">
-        {sortedNotifications.length === 0 ? (
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-secondary)' }}>
+            加载中...
+          </div>
+        ) : sorted.length === 0 ? (
           <div className="empty-state">
             <Bell size={64} />
-            <h3>暂无通知</h3>
-            <p>所有通知都已处理完毕</p>
+            <h3>{activeType === 'all' ? '暂无通知' : `暂无${typeLabelMap[activeType as NotifType]}通知`}</h3>
+            <p>{activeType === 'all' ? '所有通知都已处理完毕' : '该类型暂无通知'}</p>
           </div>
         ) : (
-          sortedNotifications.map((notif) => (
+          sorted.map((notif) => (
             <div
               key={notif.id}
               className={`card notifications-page__item ${
