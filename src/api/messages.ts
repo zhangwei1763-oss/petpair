@@ -89,6 +89,7 @@ function mapMessageFromDB(row: any): Message {
     content: row.content,
     type: row.type,
     invitationId: row.invitation_id,
+    isRead: row.is_read ?? false,
     createdAt: row.created_at,
   };
 }

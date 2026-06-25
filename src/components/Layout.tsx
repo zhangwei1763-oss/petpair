@@ -1,9 +1,12 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import {
   PawPrint, Home, Search, MessageCircle, User,
   MapPin, Newspaper, Bell, BarChart3, Palette, Send,
 } from 'lucide-react';
+import { getCurrentUser } from '../api/auth';
+import { getUserMessages } from '../api/messages';
+import { getReceivedInvitations } from '../api/invitations';
 
 interface LayoutProps {
   user?: {
@@ -11,7 +14,6 @@ interface LayoutProps {
     avatar: string;
   };
   onLogout?: () => void;
-  unreadCount?: number;
 }
 
 const navLinks = [
@@ -33,10 +35,42 @@ const tabs = [
   { label: '我的', icon: User, path: '/profile' },
 ];
 
-const Layout: React.FC<LayoutProps> = ({ unreadCount = 3 }) => {
+const Layout: React.FC<LayoutProps> = (_props) => {
   const location = useLocation();
+  const [unreadMessages, setUnreadMessages] = useState(0);
+  const [pendingInvitations, setPendingInvitations] = useState(0);
 
   const isActive = (path: string) => location.pathname === path;
+
+  // Poll unread counts every 15 seconds
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchCounts() {
+      try {
+        const authUser = await getCurrentUser();
+        if (!authUser?.id || cancelled) return;
+        const [msgs, invites] = await Promise.all([
+          getUserMessages(authUser.id),
+          getReceivedInvitations(authUser.id),
+        ]);
+        if (cancelled) return;
+        const unread = (msgs || []).filter((m) => !m.isRead && m.receiverId === authUser.id).length;
+        const pending = (invites || []).filter((i) => i.status === 'pending').length;
+        setUnreadMessages(unread);
+        setPendingInvitations(pending);
+      } catch {
+        // silently ignore
+      }
+    }
+    fetchCounts();
+    const timer = setInterval(fetchCounts, 15000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [location.pathname]);
+
+  const showBadge = (_label: string, count: number) => count > 0 ? <span className="badge">{count}</span> : null;
 
   return (
     <div className="layout">
@@ -55,9 +89,8 @@ const Layout: React.FC<LayoutProps> = ({ unreadCount = 3 }) => {
                 className={`layout__nav-link ${isActive(link.path) ? 'layout__nav-link--active' : ''}`}
               >
                 {link.label}
-                {link.label === '消息' && unreadCount > 0 && (
-                  <span className="badge layout__nav-badge">{unreadCount}</span>
-                )}
+                {link.label === '消息' && showBadge('消息', unreadMessages)}
+                {link.label === '邀约' && showBadge('邀约', pendingInvitations)}
               </Link>
             ))}
           </nav>
@@ -97,9 +130,8 @@ const Layout: React.FC<LayoutProps> = ({ unreadCount = 3 }) => {
             >
               <Icon size={22} />
               <span>{tab.label}</span>
-              {tab.label === '消息' && unreadCount > 0 && (
-                <span className="badge layout__tab-badge">{unreadCount}</span>
-              )}
+              {tab.label === '消息' && showBadge('消息', unreadMessages)}
+              {tab.label === '邀约' && showBadge('邀约', pendingInvitations)}
             </Link>
           );
         })}
@@ -173,13 +205,6 @@ const Layout: React.FC<LayoutProps> = ({ unreadCount = 3 }) => {
           background: var(--primary-light);
           font-weight: 600;
         }
-        .layout__nav-badge {
-          position: static;
-          font-size: 11px;
-          min-width: 18px;
-          height: 18px;
-          line-height: 18px;
-        }
 
         /* Extra icon buttons */
         .layout__nav-extra {
@@ -245,7 +270,16 @@ const Layout: React.FC<LayoutProps> = ({ unreadCount = 3 }) => {
           color: var(--primary);
           font-weight: 600;
         }
-        .layout__tab-badge {
+
+        /* Badge - shared for nav and tabbar */
+        .layout__nav-link > .badge {
+          position: static;
+          font-size: 11px;
+          min-width: 18px;
+          height: 18px;
+          line-height: 18px;
+        }
+        .layout__tab-item > .badge {
           position: absolute;
           top: 0;
           right: 4px;

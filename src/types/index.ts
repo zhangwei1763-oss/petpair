@@ -98,6 +98,7 @@ export interface Message {
   content: string;
   type: 'text' | 'image' | 'location' | 'ai' | 'invitation';  // 支持多种消息类型
   createdAt: string;
+  isRead?: boolean;             // 是否已读
   isAi?: boolean;               // AI 消息标记
   aiLoading?: boolean;         // AI 正在生成中
 }
