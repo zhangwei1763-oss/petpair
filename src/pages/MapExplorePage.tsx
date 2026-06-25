@@ -53,7 +53,6 @@ export default function MapExplorePage() {
   const [loadingAi, setLoadingAi] = useState<Record<string, boolean>>({});
   const [mapReady, setMapReady] = useState(false);
   const [mapError, setMapError] = useState('');
-  const [initialLoading, setInitialLoading] = useState(true);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
@@ -73,8 +72,7 @@ export default function MapExplorePage() {
       .catch((err) => console.error('加载用户信息失败', err));
     getAllPets()
       .then((data) => setPets(data || []))
-      .catch((err) => console.error('加载宠物列表失败', err))
-      .finally(() => setInitialLoading(false));
+      .catch((err) => console.error('加载宠物列表失败', err));
   }, []);
 
   // === 构建 positionCache ===
@@ -376,48 +374,6 @@ export default function MapExplorePage() {
       map.fitBounds(group.getBounds().pad(0.1));
     }
   }, [filteredPets, petMatchScores, mapReady]);
-
-  // === 加载中状态 ===
-  if (initialLoading) {
-    return (
-      <div className="map-explore-page container" style={{ textAlign: 'center', paddingTop: '80px' }}>
-        <p style={{ color: 'var(--text-secondary)' }}>加载中...</p>
-      </div>
-    );
-  }
-
-  // === 未添加宠物时的空状态 ===
-  if (!myPet) {
-    return (
-      <div className="map-explore-page container">
-        <div className="map-explore-page__no-pet">
-          <Dog size={48} />
-          <h2>请先添加宠物档案</h2>
-          <p>在「个人中心」中添加您的宠物信息后，即可使用发现和匹配功能</p>
-        </div>
-
-        <style>{`
-          .map-explore-page__no-pet {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 80px 20px;
-            text-align: center;
-            color: var(--text-secondary);
-          }
-          .map-explore-page__no-pet h2 {
-            margin: 16px 0 8px;
-            color: var(--text);
-          }
-          .map-explore-page__no-pet p {
-            max-width: 360px;
-            line-height: 1.6;
-          }
-        `}</style>
-      </div>
-    );
-  }
 
   return (
     <div className="map-explore-page container">
