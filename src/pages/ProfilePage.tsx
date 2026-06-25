@@ -159,16 +159,14 @@ export default function ProfilePage({ onLogout }: { onLogout: () => void }) {
       {/* User Info */}
       <div className="profile-page__user-card card">
         <div className="profile-page__user-info">
-          <img
-            className="avatar-xl"
-            src={currentUser.avatar}
-            alt={currentUser.name}
-          />
+          <div className="avatar-xl" style={{ background: 'var(--primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', fontWeight: 700 }}>
+            {(userName || '?').charAt(0).toUpperCase()}
+          </div>
           <div className="profile-page__user-detail">
-            <h1>{userName}</h1>
-            <p className="profile-page__user-phone">{userPhone}</p>
+            <h1>{userName || '用户'}</h1>
+            <p className="profile-page__user-phone">{userPhone || ''}</p>
             <p className="profile-page__user-location">
-              {currentUser.location.city} {currentUser.location.district}
+              {currentUser?.location ? `${currentUser.location.city} ${currentUser.location.district}` : '上海 徐汇区'}
             </p>
           </div>
         </div>

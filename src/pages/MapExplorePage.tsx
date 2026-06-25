@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { getCurrentUser } from '../api/auth';
-import { getAllPets } from '../api/pets';
+import { getAllPets, getMyPets } from '../api/pets';
 import type { PetProfile } from '../types';
 import { calculateAdvancedMatchScore, getMatchLabel, getCompatibilityAdvice } from '../utils/matchEngine';
 import { generateMatchExplanation } from '../api/ai';
@@ -24,33 +24,19 @@ import {
 const CENTER_LNG = 121.4347;
 const CENTER_LAT = 31.1884;
 
-// 宠物真实经纬度坐标（上海徐汇区附近）
-const petPositions: Record<string, { lng: number; lat: number }> = {
-  pet_101: { lng: 121.4297, lat: 31.1934 },
-  pet_102: { lng: 121.4497, lat: 31.1984 },
-  pet_103: { lng: 121.4147, lat: 31.1784 },
-  pet_104: { lng: 121.4597, lat: 31.1884 },
-  pet_105: { lng: 121.4397, lat: 31.1684 },
-  pet_106: { lng: 121.4097, lat: 31.1834 },
-  pet_107: { lng: 121.4647, lat: 31.1634 },
-  pet_108: { lng: 121.4447, lat: 31.1884 },
-  pet_109: { lng: 121.4247, lat: 31.1584 },
-  pet_110: { lng: 121.4547, lat: 31.1784 },
-};
+// 动态生成宠物位置
+function getPetPosition(index: number, total: number) {
+  const angle = (index / total) * 2 * Math.PI;
+  const radius = 0.005 + (index % 5) * 0.003;
+  return {
+    lng: CENTER_LNG + Math.cos(angle) * radius,
+    lat: CENTER_LAT + Math.sin(angle) * radius,
+    distance: parseFloat((0.5 + (index % 8) * 0.8 + Math.random() * 0.5).toFixed(1)),
+  };
+}
 
-// 模拟距离
-const distanceMap: Record<string, number> = {
-  pet_101: 2.3,
-  pet_102: 4.1,
-  pet_103: 6.8,
-  pet_104: 8.5,
-  pet_105: 3.2,
-  pet_106: 7.1,
-  pet_107: 5.4,
-  pet_108: 1.8,
-  pet_109: 9.2,
-  pet_110: 11.0,
-};
+// 位置缓存
+const positionCache: Record<string, { lng: number; lat: number; distance: number }> = {};
 
 type SpeciesFilter = 'all' | 'dog' | 'cat';
 type TabType = 'map' | 'recommend';
@@ -71,25 +57,43 @@ export default function MapExplorePage() {
   const mapInstanceRef = useRef<AMap.Map | null>(null);
   const markersRef = useRef<AMap.Marker[]>([]);
 
-  const [currentUser, setCurrentUser] = useState<any>(null);
   const [pets, setPets] = useState<PetProfile[]>([]);
+  const [myPet, setMyPet] = useState<PetProfile | null>(null);
 
   useEffect(() => {
     getCurrentUser()
-      .then((user) => setCurrentUser(user))
+      .then((user) => {
+        if (user?.id) {
+          getMyPets(user.id)
+            .then((myPets) => setMyPet(myPets?.[0] || null))
+            .catch((err) => console.error('加载我的宠物失败', err));
+        }
+      })
       .catch((err) => console.error('加载用户信息失败', err));
     getAllPets()
       .then((data) => setPets(data || []))
       .catch((err) => console.error('加载宠物列表失败', err));
   }, []);
 
-  const myPet = currentUser?.pets[0];
+  // === 构建 positionCache ===
+  useMemo(() => {
+    pets.forEach((pet, i) => {
+      if (!positionCache[pet.id]) {
+        positionCache[pet.id] = getPetPosition(i, Math.max(pets.length, 10));
+      }
+    });
+  }, [pets]);
+
+  // === 获取宠物距离 ===
+  function getPetDist(petId: string) {
+    return positionCache[petId]?.distance || 5;
+  }
 
   // === 基础筛选 ===
   const baseFiltered = useMemo(() => {
     return pets.filter((pet) => {
       if (speciesFilter !== 'all' && pet.species !== speciesFilter) return false;
-      const dist = distanceMap[pet.id] || 5;
+      const dist = getPetDist(pet.id);
       if (dist > maxDistance) return false;
       return true;
     });
@@ -99,7 +103,8 @@ export default function MapExplorePage() {
   const filteredPets = useMemo(() => {
     if (!myPet) return baseFiltered;
     return baseFiltered.filter((pet) => {
-      const dist = distanceMap[pet.id] || 5;
+      if (pet.id === myPet.id) return false;
+      const dist = getPetDist(pet.id);
       const result = calculateAdvancedMatchScore(myPet, pet, dist);
       return result.score >= minScore;
     });
@@ -110,7 +115,7 @@ export default function MapExplorePage() {
     if (!myPet) return [];
     let list = baseFiltered
       .map((pet) => {
-        const dist = distanceMap[pet.id] || 5;
+        const dist = getPetDist(pet.id);
         const matchResult = calculateAdvancedMatchScore(myPet, pet, dist);
         return { pet, dist, matchResult };
       })
@@ -136,7 +141,7 @@ export default function MapExplorePage() {
 
   const selectedMatchScore = useMemo(() => {
     if (!selectedPet || !myPet) return null;
-    const dist = distanceMap[selectedPet.id] || 5;
+    const dist = getPetDist(selectedPet.id);
     return calculateAdvancedMatchScore(myPet, selectedPet, dist);
   }, [selectedPet, myPet]);
 
@@ -145,7 +150,7 @@ export default function MapExplorePage() {
     const scores: Record<string, { score: number; color: string }> = {};
     if (!myPet) return scores;
     filteredPets.forEach((pet) => {
-      const dist = distanceMap[pet.id] || 5;
+      const dist = getPetDist(pet.id);
       const result = calculateAdvancedMatchScore(myPet, pet, dist);
       scores[pet.id] = { score: result.score, color: getMatchColor(result.score) };
     });
@@ -160,7 +165,7 @@ export default function MapExplorePage() {
       try {
         const pet = pets.find((p) => p.id === petId);
         if (pet) {
-          const dist = distanceMap[petId] || 5;
+          const dist = getPetDist(petId);
           const matchResult = calculateAdvancedMatchScore(myPet, pet, dist);
           const explanation = await generateMatchExplanation(myPet, pet, matchResult.score);
           setAiExplanations((prev) => ({ ...prev, [petId]: explanation }));
@@ -288,7 +293,7 @@ export default function MapExplorePage() {
 
     // 添加宠物标记
     filteredPets.forEach((pet) => {
-      const pos = petPositions[pet.id];
+      const pos = positionCache[pet.id];
       if (!pos) return;
 
       const matchInfo = petMatchScores[pet.id];
@@ -529,7 +534,7 @@ export default function MapExplorePage() {
             </h3>
             <div className="map-explore-page__list-scroll">
               {filteredPets.map((pet) => {
-                const dist = distanceMap[pet.id] || 5;
+                const dist = getPetDist(pet.id);
                 const matchResult = calculateAdvancedMatchScore(myPet, pet, dist);
                 const { label } = getMatchLabel(matchResult.score);
                 return (
@@ -788,7 +793,7 @@ export default function MapExplorePage() {
                 <div className="map-explore-page__popup-meta">
                   <span className="map-explore-page__popup-distance">
                     <MapPin size={12} />
-                    {distanceMap[selectedPet.id]?.toFixed(1) || '?'}km
+                    {getPetDist(selectedPet.id).toFixed(1)}km
                   </span>
                   <span
                     className="map-explore-page__popup-score"
