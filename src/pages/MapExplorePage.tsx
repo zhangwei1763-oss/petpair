@@ -283,7 +283,7 @@ export default function MapExplorePage() {
     return () => {
       destroyed = true;
       if (mapInstanceRef.current) {
-        mapInstanceRef.current.destroy();
+        mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
       }
       setMapReady(false);
