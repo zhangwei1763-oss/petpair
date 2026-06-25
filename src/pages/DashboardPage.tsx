@@ -1,6 +1,9 @@
-import { useState, useMemo } from 'react';
-import type { MatchResult } from '../types';
-import { getCurrentUser, getNearbyPets, sendInvitationWithMessage } from '../data/mockData';
+import { useState, useMemo, useEffect } from 'react';
+import type { MatchResult, PetProfile } from '../types';
+import { getCurrentUser } from '../api/auth';
+import { getAllPets, getMyPets } from '../api/pets';
+import { createInvitation } from '../api/invitations';
+import { sendMessage } from '../api/messages';
 import {
   calculateAdvancedMatchScore,
   getDimensionLabel,
@@ -68,12 +71,13 @@ const distanceMap: Record<string, number> = {
 };
 
 export default function DashboardPage() {
-  const currentUser = getCurrentUser();
-  const nearbyPets = getNearbyPets();
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [myPets, setMyPets] = useState<PetProfile[]>([]);
+  const [nearbyPets, setNearbyPets] = useState<PetProfile[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
-  const [selectedPetId, setSelectedPetId] = useState<string>(
-    currentUser.pets[0]?.id || ''
-  );
+  const [selectedPetId, setSelectedPetId] = useState<string>('');
   const [showFilters, setShowFilters] = useState(false);
   const [filterSize, setFilterSize] = useState<string>('all');
   const [filterEnergy, setFilterEnergy] = useState<string>('all');
@@ -91,7 +95,40 @@ export default function DashboardPage() {
   const [toastVisible, setToastVisible] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
 
-  const selectedPet = currentUser.pets.find((p) => p.id === selectedPetId);
+  // 加载用户、宠物和附近宠物数据
+  useEffect(() => {
+    async function loadData() {
+      try {
+        setLoading(true);
+        setError(null);
+        const user = await getCurrentUser();
+        if (!user) {
+          setError('用户未登录');
+          setLoading(false);
+          return;
+        }
+        setCurrentUser(user);
+
+        const [pets, allPets] = await Promise.all([
+          getMyPets(user.id),
+          getAllPets(),
+        ]);
+        setMyPets(pets);
+        setNearbyPets(allPets.filter((p) => p.ownerId !== user.id));
+
+        if (pets.length > 0) {
+          setSelectedPetId(pets[0].id);
+        }
+      } catch (err: any) {
+        setError(err.message || '加载数据失败');
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, []);
+
+  const selectedPet = myPets.find((p) => p.id === selectedPetId);
 
   const matchResults: MatchResult[] = useMemo(() => {
     if (!selectedPet) return [];
@@ -127,33 +164,44 @@ export default function DashboardPage() {
     return getCompatibilityAdvice(selectedDimensions);
   }, [selectedDimensions]);
 
-  const handleInvite = (e: React.FormEvent) => {
+  const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedMatch) return;
+    if (!selectedMatch || !currentUser || !selectedPet) return;
 
-    // 使用统一函数同时创建邀约和消息
-    sendInvitationWithMessage({
-      fromUserId: currentUser.id,
-      toUserId: selectedMatch.pet.ownerId,
-      fromPetId: selectedPet?.id || '',
-      toPetId: selectedMatch.pet.id,
-      proposedTime: inviteForm.time,
-      proposedLocation: inviteForm.location,
-      activityType: inviteForm.activityType,
-      message: inviteForm.message,
-    });
+    try {
+      const invitation = await createInvitation({
+        fromUserId: currentUser.id,
+        toUserId: selectedMatch.pet.ownerId,
+        fromPetId: selectedPet.id,
+        toPetId: selectedMatch.pet.id,
+        proposedTime: inviteForm.time,
+        proposedLocation: inviteForm.location,
+        activityType: inviteForm.activityType,
+        message: inviteForm.message,
+      });
 
-    setInviteSuccess(true);
-    setToastVisible(true);
-    setTimeout(() => {
-      setToastVisible(false);
-    }, 3000);
-    setTimeout(() => {
-      setInviteSuccess(false);
-      setShowInviteForm(false);
-      setSelectedMatch(null);
-      setInviteForm({ time: '', location: '', activityType: 'walk', message: '' });
-    }, 2000);
+      await sendMessage({
+        senderId: currentUser.id,
+        receiverId: selectedMatch.pet.ownerId,
+        content: `我邀请你带 ${selectedMatch.pet.name} 一起${activityLabelMap[inviteForm.activityType]}，地点：${inviteForm.location}，时间：${inviteForm.time}`,
+        type: 'invitation',
+        invitationId: invitation.id,
+      });
+
+      setInviteSuccess(true);
+      setToastVisible(true);
+      setTimeout(() => {
+        setToastVisible(false);
+      }, 3000);
+      setTimeout(() => {
+        setInviteSuccess(false);
+        setShowInviteForm(false);
+        setSelectedMatch(null);
+        setInviteForm({ time: '', location: '', activityType: 'walk', message: '' });
+      }, 2000);
+    } catch (err: any) {
+      setError(err.message || '发送邀约失败');
+    }
   };
 
   const handleReport = (reason: string) => {
@@ -171,9 +219,24 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* Loading */}
+      {loading && (
+        <div className="dashboard-page__loading">
+          <PawPrint size={32} className="dashboard-page__loading-icon" />
+          <p>加载中...</p>
+        </div>
+      )}
+
+      {/* Error */}
+      {error && (
+        <div className="dashboard-page__error">
+          <p>{error}</p>
+        </div>
+      )}
+
       {/* Welcome */}
       <div className="dashboard-page__welcome">
-        <h1>你好，{currentUser.name}！</h1>
+        <h1>你好，{currentUser?.user_metadata?.name || '用户'}！</h1>
         <p className="dashboard-page__welcome-sub">
           为 <strong>{selectedPet?.name}</strong> 找到最合适的玩伴吧
         </p>
@@ -182,7 +245,7 @@ export default function DashboardPage() {
       {/* Pet Selector */}
       <div className="dashboard-page__pet-selector">
         <h3>我的宠物</h3>
-        {currentUser.pets.length === 0 ? (
+        {myPets.length === 0 ? (
           <div className="dashboard-page__empty-pets">
             <PawPrint size={48} />
             <p>还没有添加宠物</p>
@@ -196,7 +259,7 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div className="dashboard-page__pet-scroll">
-            {currentUser.pets.map((pet) => (
+            {myPets.map((pet) => (
               <div
                 key={pet.id}
                 className={`dashboard-page__pet-item ${
@@ -522,6 +585,33 @@ export default function DashboardPage() {
         .dashboard-page {
           padding-top: 24px;
           padding-bottom: 40px;
+        }
+        .dashboard-page__loading {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 12px;
+          padding: 48px 24px;
+          color: var(--text-secondary);
+        }
+        .dashboard-page__loading-icon {
+          animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        .dashboard-page__error {
+          padding: 16px 24px;
+          background: #fff2f0;
+          border: 1px solid #ffccc7;
+          border-radius: var(--radius-sm);
+          color: #cf1322;
+          margin-bottom: 16px;
+        }
+        .dashboard-page__error p {
+          margin: 0;
         }
         .dashboard-page__welcome {
           margin-bottom: 24px;

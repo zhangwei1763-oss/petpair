@@ -1,10 +1,8 @@
-import { supabase, isSupabaseConfigured } from './client';
+import { supabase } from './client';
 import type { PetProfile } from '../types';
-import { getCurrentUser, nearbyPets } from '../data/mockData';
 
 // 获取所有宠物（公开列表）
 export async function getAllPets(): Promise<PetProfile[]> {
-  if (!isSupabaseConfigured) return nearbyPets;
   const { data, error } = await supabase
     .from('pets')
     .select('*')
@@ -15,7 +13,6 @@ export async function getAllPets(): Promise<PetProfile[]> {
 
 // 获取我的宠物
 export async function getMyPets(userId: string): Promise<PetProfile[]> {
-  if (!isSupabaseConfigured) return getCurrentUser().pets;
   const { data, error } = await supabase
     .from('pets')
     .select('*')
@@ -27,9 +24,6 @@ export async function getMyPets(userId: string): Promise<PetProfile[]> {
 
 // 获取宠物详情
 export async function getPetById(petId: string): Promise<PetProfile | null> {
-  if (!isSupabaseConfigured) {
-    return nearbyPets.find(p => p.id === petId) || getCurrentUser().pets.find(p => p.id === petId) || null;
-  }
   const { data, error } = await supabase
     .from('pets')
     .select('*')
@@ -41,31 +35,6 @@ export async function getPetById(petId: string): Promise<PetProfile | null> {
 
 // 创建宠物
 export async function createPet(pet: Partial<PetProfile>): Promise<PetProfile> {
-  if (!isSupabaseConfigured) {
-    // Mock fallback
-    const currentUser = getCurrentUser();
-    const newPet: PetProfile = {
-      id: `pet_${Date.now()}`,
-      name: pet.name || '新宠物',
-      breed: pet.breed || '未知品种',
-      species: pet.species || 'dog',
-      age: pet.age || 1,
-      gender: pet.gender || 'male',
-      weight: pet.weight ?? 0,
-      size: pet.size || 'medium',
-      personalityTags: pet.personalityTags || [],
-      energyLevel: pet.energyLevel || 'medium',
-      activityPreferences: pet.activityPreferences || [],
-      socialPreferences: pet.socialPreferences || [],
-      photos: pet.photos || ['https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=400&h=400&fit=crop'],
-      bio: pet.bio || '',
-      vaccineStatus: pet.vaccineStatus || 'partial',
-      neutered: pet.neutered || false,
-      ownerId: currentUser.id,
-    };
-    currentUser.pets.push(newPet);
-    return newPet;
-  }
   const { data, error } = await supabase
     .from('pets')
     .insert({
@@ -93,15 +62,6 @@ export async function createPet(pet: Partial<PetProfile>): Promise<PetProfile> {
 
 // 更新宠物
 export async function updatePet(petId: string, updates: Partial<PetProfile>): Promise<PetProfile> {
-  if (!isSupabaseConfigured) {
-    const currentUser = getCurrentUser();
-    const idx = currentUser.pets.findIndex(p => p.id === petId);
-    if (idx >= 0) {
-      currentUser.pets[idx] = { ...currentUser.pets[idx], ...updates };
-      return currentUser.pets[idx];
-    }
-    throw new Error('Pet not found');
-  }
   const dbUpdates: Record<string, any> = {};
   if (updates.name) dbUpdates.name = updates.name;
   if (updates.breed) dbUpdates.breed = updates.breed;
@@ -131,12 +91,6 @@ export async function updatePet(petId: string, updates: Partial<PetProfile>): Pr
 
 // 删除宠物
 export async function deletePet(petId: string): Promise<void> {
-  if (!isSupabaseConfigured) {
-    const currentUser = getCurrentUser();
-    const idx = currentUser.pets.findIndex(p => p.id === petId);
-    if (idx >= 0) currentUser.pets.splice(idx, 1);
-    return;
-  }
   const { error } = await supabase
     .from('pets')
     .delete()

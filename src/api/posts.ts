@@ -1,9 +1,7 @@
-import { supabase, isSupabaseConfigured } from './client';
-import { mockActivityPosts } from '../data/mockData';
+import { supabase } from './client';
 import type { ActivityPost } from '../types';
 
 export async function getPosts(): Promise<ActivityPost[]> {
-  if (!isSupabaseConfigured) return mockActivityPosts;
   const { data, error } = await supabase
     .from('posts')
     .select('*, author:users(name, avatar), pet:pets(name, photos)')
@@ -13,8 +11,6 @@ export async function getPosts(): Promise<ActivityPost[]> {
 }
 
 export async function toggleLike(postId: string, userId: string): Promise<boolean> {
-  if (!isSupabaseConfigured) return false;
-  // Check if already liked
   const { data: existing } = await supabase
     .from('post_likes')
     .select('id')
@@ -32,7 +28,6 @@ export async function toggleLike(postId: string, userId: string): Promise<boolea
 }
 
 export async function addComment(postId: string, userId: string, content: string): Promise<any> {
-  if (!isSupabaseConfigured) return null;
   const { data, error } = await supabase
     .from('comments')
     .insert({ post_id: postId, user_id: userId, content })

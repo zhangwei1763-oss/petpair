@@ -19,7 +19,6 @@ import type { PetType, Gender, SizeType } from '../types';
 
 interface OnboardingPageProps {
   userName?: string;
-  onLogin: () => void;
 }
 
 const SPECIES_OPTIONS: { value: PetType; label: string; icon: React.ReactNode }[] = [
@@ -40,7 +39,7 @@ const SIZE_OPTIONS: { value: SizeType; label: string }[] = [
   { value: 'giant', label: '巨型' },
 ];
 
-export default function OnboardingPage({ userName, onLogin }: OnboardingPageProps) {
+export default function OnboardingPage({ userName }: OnboardingPageProps) {
   const navigate = useNavigate();
   const [step, setStep] = useState<'welcome' | 'form' | 'done'>('welcome');
   const [loading, setLoading] = useState(false);
@@ -59,7 +58,6 @@ export default function OnboardingPage({ userName, onLogin }: OnboardingPageProp
   };
 
   const handleSkip = () => {
-    onLogin();
     navigate('/dashboard');
   };
 
@@ -121,7 +119,6 @@ export default function OnboardingPage({ userName, onLogin }: OnboardingPageProp
   };
 
   const handleFinish = () => {
-    onLogin();
     navigate('/dashboard');
   };
 

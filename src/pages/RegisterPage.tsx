@@ -2,13 +2,13 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { UserPlus, Mail, Lock, User, ArrowLeft } from 'lucide-react';
 import { signUpWithEmail } from '../api/auth';
-import { isSupabaseConfigured } from '../api/client';
+
 
 interface RegisterPageProps {
-  onLogin: (userData?: { name: string; email: string }) => void;
+  // no props needed - uses Supabase auth directly
 }
 
-export default function RegisterPage({ onLogin }: RegisterPageProps) {
+export default function RegisterPage(_props: RegisterPageProps) {
   const navigate = useNavigate();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -44,22 +44,8 @@ export default function RegisterPage({ onLogin }: RegisterPageProps) {
     setLoading(true);
 
     try {
-      if (isSupabaseConfigured) {
-        await signUpWithEmail(email, password, name.trim());
-        // Supabase 模式：注册成功后跳转到 onboarding
-        const userData = { name: name.trim(), email: email.trim() };
-        localStorage.setItem('petpair_registered_user', JSON.stringify(userData));
-        onLogin(userData);
-        navigate('/onboarding');
-      } else {
-        // Mock 模式：模拟注册成功
-        setTimeout(() => {
-          const userData = { name: name.trim(), email: email.trim() };
-          localStorage.setItem('petpair_registered_user', JSON.stringify(userData));
-          onLogin(userData);
-          navigate('/onboarding');
-        }, 800);
-      }
+      await signUpWithEmail(email, password, name.trim());
+      navigate('/onboarding');
     } catch (err: any) {
       setError(err.message || '注册失败，请重试');
     } finally {

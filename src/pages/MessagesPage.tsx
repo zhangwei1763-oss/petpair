@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import type { Message } from '../types';
-import { getCurrentUser, getNearbyPets, initInteractionData, getAllMessages, saveAllMessages } from '../data/mockData';
+import type { Message, PetProfile } from '../types';
+import { getCurrentUser } from '../api/auth';
+import { getUserMessages, sendMessage } from '../api/messages';
+import { getAllPets } from '../api/pets';
 import MessageBubble from '../components/MessageBubble';
 import { summonPawPal } from '../api/ai';
 import { MessageCircle, Send, ArrowLeft, Sparkles } from 'lucide-react';
@@ -15,54 +17,11 @@ interface Conversation {
 }
 
 export default function MessagesPage() {
-  initInteractionData();
-  const currentUser = getCurrentUser();
-  const nearbyPets = getNearbyPets();
-
-  const [conversations, setConversations] = useState<Conversation[]>(() => {
-    // Group messages by conversation partner
-    const convMap = new Map<string, Message[]>();
-
-    // 只过滤与当前用户相关的消息
-    const allMessages = getAllMessages();
-    const userMessages = allMessages.filter(
-      (msg) => msg.senderId === currentUser.id || msg.receiverId === currentUser.id
-    );
-
-    userMessages.forEach((msg) => {
-      const partnerId =
-        msg.senderId === currentUser.id ? msg.receiverId : msg.senderId;
-      if (!convMap.has(partnerId)) {
-        convMap.set(partnerId, []);
-      }
-      convMap.get(partnerId)!.push(msg);
-    });
-
-    const convs: Conversation[] = [];
-    convMap.forEach((msgs, partnerId) => {
-      const sorted = [...msgs].sort(
-        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-      );
-      const last = sorted[sorted.length - 1];
-
-      // Find the pet associated with this conversation
-      const relatedPet = nearbyPets.find((p) => p.ownerId === partnerId);
-
-      convs.push({
-        userId: partnerId,
-        petName: relatedPet?.name || '未知宠物',
-        petPhoto: relatedPet?.photos[0] || 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=200&h=200&fit=crop',
-        messages: sorted,
-        lastMessage: last.content,
-        lastTime: last.createdAt,
-      });
-    });
-
-    return convs.sort(
-      (a, b) =>
-        new Date(b.lastTime).getTime() - new Date(a.lastTime).getTime()
-    );
-  });
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [allPets, setAllPets] = useState<PetProfile[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const [activeConv, setActiveConv] = useState<Conversation | null>(null);
   const [inputText, setInputText] = useState('');
@@ -72,47 +31,68 @@ export default function MessagesPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const sendTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // 当当前用户变化时，重新加载会话列表
   useEffect(() => {
-    const allMessages = getAllMessages();
-    const userMessages = allMessages.filter(
-      (msg) => msg.senderId === currentUser.id || msg.receiverId === currentUser.id
-    );
+    async function loadData() {
+      try {
+        const user = await getCurrentUser();
+        if (!user) {
+          setLoading(false);
+          return;
+        }
+        setCurrentUser(user);
+        const [msgs, pets] = await Promise.all([
+          getUserMessages(user.id),
+          getAllPets(),
+        ]);
+        setAllPets(pets);
 
-    const convMap = new Map<string, Message[]>();
-    userMessages.forEach((msg) => {
-      const partnerId =
-        msg.senderId === currentUser.id ? msg.receiverId : msg.senderId;
-      if (!convMap.has(partnerId)) {
-        convMap.set(partnerId, []);
+        // Group messages by conversation partner
+        const convMap = new Map<string, Message[]>();
+        const userMessages = msgs.filter(
+          (msg) => msg.senderId === user.id || msg.receiverId === user.id
+        );
+
+        userMessages.forEach((msg) => {
+          const partnerId =
+            msg.senderId === user.id ? msg.receiverId : msg.senderId;
+          if (!convMap.has(partnerId)) {
+            convMap.set(partnerId, []);
+          }
+          convMap.get(partnerId)!.push(msg);
+        });
+
+        const convs: Conversation[] = [];
+        convMap.forEach((msgs, partnerId) => {
+          const sorted = [...msgs].sort(
+            (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          );
+          const last = sorted[sorted.length - 1];
+
+          // Find the pet associated with this conversation
+          const relatedPet = pets.find((p) => p.ownerId === partnerId);
+
+          convs.push({
+            userId: partnerId,
+            petName: relatedPet?.name || '未知宠物',
+            petPhoto: relatedPet?.photos[0] || 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=200&h=200&fit=crop',
+            messages: sorted,
+            lastMessage: last.content,
+            lastTime: last.createdAt,
+          });
+        });
+
+        setConversations(convs.sort(
+          (a, b) =>
+            new Date(b.lastTime).getTime() - new Date(a.lastTime).getTime()
+        ));
+        setLoading(false);
+      } catch (err: any) {
+        setError(err.message || '加载失败');
+        setLoading(false);
       }
-      convMap.get(partnerId)!.push(msg);
-    });
-
-    const convs: Conversation[] = [];
-    convMap.forEach((msgs, partnerId) => {
-      const sorted = [...msgs].sort(
-        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-      );
-      const last = sorted[sorted.length - 1];
-      const relatedPet = nearbyPets.find((p) => p.ownerId === partnerId);
-
-      convs.push({
-        userId: partnerId,
-        petName: relatedPet?.name || '未知宠物',
-        petPhoto: relatedPet?.photos[0] || 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=200&h=200&fit=crop',
-        messages: sorted,
-        lastMessage: last.content,
-        lastTime: last.createdAt,
-      });
-    });
-
-    setConversations(convs.sort(
-      (a, b) =>
-        new Date(b.lastTime).getTime() - new Date(a.lastTime).getTime()
-    ));
-    setActiveConv(null);
-  }, [currentUser.id]);
+    }
+    loadData();
+  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -127,45 +107,44 @@ export default function MessagesPage() {
     };
   }, []);
 
-  const handleSend = useCallback(() => {
-    if (!inputText.trim() || !activeConv || isSending) return;
+  const handleSend = useCallback(async () => {
+    if (!inputText.trim() || !activeConv || isSending || !currentUser) return;
 
     // Prevent double-send within 800ms
     setIsSending(true);
 
-    const newMsg: Message = {
-      id: `msg_${Date.now()}`,
-      senderId: currentUser.id,
-      receiverId: activeConv.userId,
-      content: inputText.trim(),
-      type: 'text',
-      createdAt: new Date().toISOString(),
-    };
+    try {
+      const newMsg = await sendMessage({
+        senderId: currentUser.id,
+        receiverId: activeConv.userId,
+        content: inputText.trim(),
+        type: 'text',
+      });
 
-    setConversations((prev) => {
-      const updated = prev.map((conv) =>
-        conv.userId === activeConv.userId
-          ? {
-              ...conv,
-              messages: [...conv.messages, newMsg],
-              lastMessage: newMsg.content,
-              lastTime: newMsg.createdAt,
-            }
-          : conv
-      );
-      // 保存所有消息到 localStorage
-      const allMsgs = updated.flatMap((c) => c.messages);
-      saveAllMessages(allMsgs);
-      return updated;
-    });
+      setConversations((prev) => {
+        const updated = prev.map((conv) =>
+          conv.userId === activeConv.userId
+            ? {
+                ...conv,
+                messages: [...conv.messages, newMsg],
+                lastMessage: newMsg.content,
+                lastTime: newMsg.createdAt,
+              }
+            : conv
+        );
+        return updated;
+      });
 
-    setInputText('');
-
-    // Reset sending state after debounce period
-    sendTimeoutRef.current = setTimeout(() => {
-      setIsSending(false);
-    }, 800);
-  }, [inputText, activeConv, isSending, currentUser.id]);
+      setInputText('');
+    } catch (err: any) {
+      console.error('发送失败', err);
+    } finally {
+      // Reset sending state after debounce period
+      sendTimeoutRef.current = setTimeout(() => {
+        setIsSending(false);
+      }, 800);
+    }
+  }, [inputText, activeConv, isSending, currentUser]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -181,10 +160,10 @@ export default function MessagesPage() {
 
   // === 召唤爪爪小助手 ===
   const handleSummonPawPal = useCallback(async () => {
-    if (!activeConv || isAiActive) return;
+    if (!activeConv || isAiActive || !currentUser) return;
 
-    const myPet = currentUser.pets[0];
-    const otherPet = nearbyPets.find((p) => p.ownerId === activeConv.userId);
+    const myPet = allPets.find((p) => p.ownerId === currentUser.id);
+    const otherPet = allPets.find((p) => p.ownerId === activeConv.userId);
 
     if (!myPet || !otherPet) return;
 
@@ -252,9 +231,6 @@ export default function MessagesPage() {
               }
             : conv
         );
-        // 保存所有消息到 localStorage
-        const allMsgs = updated.flatMap((c) => c.messages);
-        saveAllMessages(allMsgs);
         return updated;
       });
     } catch {
@@ -281,15 +257,12 @@ export default function MessagesPage() {
               }
             : conv
         );
-        // 保存所有消息到 localStorage
-        const allMsgs = updated.flatMap((c) => c.messages);
-        saveAllMessages(allMsgs);
         return updated;
       });
     } finally {
       setIsAiActive(false);
     }
-  }, [activeConv, isAiActive, currentUser.id, currentUser.pets, nearbyPets]);
+  }, [activeConv, isAiActive, currentUser, allPets]);
 
   const currentConv = conversations.find((c) => c.userId === activeConv?.userId);
 
@@ -301,7 +274,18 @@ export default function MessagesPage() {
           <h1>消息</h1>
         </div>
 
-        {conversations.length === 0 ? (
+        {loading ? (
+          <div className="empty-state" style={{ paddingTop: 60 }}>
+            <MessageCircle size={64} />
+            <h3>加载中...</h3>
+          </div>
+        ) : error ? (
+          <div className="empty-state" style={{ paddingTop: 60 }}>
+            <MessageCircle size={64} />
+            <h3>出错了</h3>
+            <p>{error}</p>
+          </div>
+        ) : conversations.length === 0 ? (
           <div className="empty-state">
             <MessageCircle size={64} />
             <h3>暂无消息</h3>
@@ -369,7 +353,7 @@ export default function MessagesPage() {
                 <MessageBubble
                   key={msg.id}
                   message={msg}
-                  isMine={msg.senderId === currentUser.id}
+                  isMine={msg.senderId === currentUser?.id}
                 />
               ))}
               <div ref={messagesEndRef} />

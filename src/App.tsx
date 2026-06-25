@@ -20,101 +20,53 @@ import LeaderboardPage from './pages/LeaderboardPage'
 import StatsPage from './pages/StatsPage'
 import ThemePage from './pages/ThemePage'
 import ErrorBoundary from './components/ErrorBoundary'
-import { getCurrentUser, setCurrentUser, clearCurrentUser, initInteractionData } from './data/mockData'
-import { isSupabaseConfigured } from './api/client'
 import { getSession, onAuthStateChange, getUserProfile, createUserProfile, signOut } from './api/auth'
-
-interface RegisteredUserData {
-  name: string;
-  email: string;
-}
 
 function App() {
   const [user, setUser] = useState<any>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [registeredUser, setRegisteredUser] = useState<RegisteredUserData | null>(null);
   const unsubscribeRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
-    // 初始化跨用户交互数据持久化
-    initInteractionData();
-
-    // 从 localStorage 恢复注册用户信息
-    const storedUser = localStorage.getItem('petpair_registered_user');
-    if (storedUser) {
-      try {
-        setRegisteredUser(JSON.parse(storedUser));
-      } catch {
-        // ignore parse errors
-      }
-    }
-
-    if (isSupabaseConfigured) {
-      // Supabase 模式
-      getSession().then(session => {
-        if (session?.user) {
-          getUserProfile(session.user.id).then(profile => {
-            if (profile) {
+    getSession().then(session => {
+      if (session?.user) {
+        getUserProfile(session.user.id).then(profile => {
+          if (profile) {
+            setUser({ ...session.user, ...profile });
+            setIsLoggedIn(true);
+          } else {
+            createUserProfile(session.user.id, session.user.user_metadata?.name || '宠物爱好者', session.user.phone || undefined).then(profile => {
               setUser({ ...session.user, ...profile });
               setIsLoggedIn(true);
-            } else {
-              // 首次登录，创建 profile
-              createUserProfile(session.user.id, session.user.user_metadata?.name || '宠物爱好者', session.user.phone || undefined).then(profile => {
-                setUser({ ...session.user, ...profile });
-                setIsLoggedIn(true);
-              });
-            }
-          });
-        }
-        setLoading(false);
-      });
-
-      onAuthStateChange((authUser) => {
-        if (authUser) {
-          getUserProfile(authUser.id).then(profile => {
-            setUser({ ...authUser, ...profile });
-            setIsLoggedIn(true);
-          });
-        } else {
-          setUser(null);
-          setIsLoggedIn(false);
-        }
-      }).then(unsubscribe => {
-        unsubscribeRef.current = unsubscribe;
-      });
-
-      return () => { unsubscribeRef.current?.(); };
-    } else {
-      // Mock 模式
-      const mockUser = getCurrentUser();
-      setUser(mockUser);
-      setIsLoggedIn(true);
+            });
+          }
+        });
+      }
       setLoading(false);
-    }
+    });
+
+    onAuthStateChange((authUser) => {
+      if (authUser) {
+        getUserProfile(authUser.id).then(profile => {
+          setUser({ ...authUser, ...profile });
+          setIsLoggedIn(true);
+        });
+      } else {
+        setUser(null);
+        setIsLoggedIn(false);
+      }
+    }).then(unsubscribe => {
+      unsubscribeRef.current = unsubscribe;
+    });
+
+    return () => { unsubscribeRef.current?.(); };
   }, []);
 
-  const handleLogin = (userData?: RegisteredUserData, selectedUserId?: string) => {
-    setIsLoggedIn(true);
-    if (userData) {
-      setRegisteredUser(userData);
-    }
-    if (selectedUserId) {
-      setCurrentUser(selectedUserId);
-      const mockUser = getCurrentUser();
-      setUser(mockUser);
-    }
-  };
-
   const handleLogout = async () => {
-    if (isSupabaseConfigured) {
-      await signOut();
-    }
+    await signOut();
     setUser(null);
     setIsLoggedIn(false);
-    setRegisteredUser(null);
-    localStorage.removeItem('petpair_registered_user');
-    clearCurrentUser();
   };
 
   if (loading) {
@@ -136,7 +88,7 @@ function App() {
             isLoggedIn ? (
               <Navigate to="/dashboard" replace />
             ) : (
-              <LoginPage onLogin={handleLogin} />
+              <LoginPage />
             )
           }
         />
@@ -146,7 +98,7 @@ function App() {
             isLoggedIn ? (
               <Navigate to="/dashboard" replace />
             ) : (
-              <RegisterPage onLogin={handleLogin} />
+              <RegisterPage />
             )
           }
         />
@@ -154,10 +106,7 @@ function App() {
           path="/onboarding"
           element={
             isLoggedIn ? (
-              <OnboardingPage
-                userName={registeredUser?.name || undefined}
-                onLogin={() => handleLogin()}
-              />
+              <OnboardingPage />
             ) : (
               <Navigate to="/login" replace />
             )
@@ -181,11 +130,9 @@ function App() {
           <Route path="/messages" element={<MessagesPage />} />
           <Route path="/profile" element={<ProfilePage onLogout={handleLogout} />} />
           <Route path="/settings" element={<SettingsPage onLogout={handleLogout} />} />
-          {/* V1.5 */}
           <Route path="/community" element={<ActivityFeedPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/search" element={<SearchPage />} />
-          {/* V2.0 */}
           <Route path="/explore" element={<MapExplorePage />} />
           <Route path="/leaderboard" element={<LeaderboardPage />} />
           <Route path="/stats" element={<StatsPage />} />

@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import type { Invitation, PetProfile } from '../types';
-import { getCurrentUser, getNearbyPets, initInteractionData, getAllInvitations, saveAllInvitations, sendInvitationWithMessage } from '../data/mockData';
+import { getCurrentUser } from '../api/auth';
+import { getUserInvitations, createInvitation, updateInvitationStatus } from '../api/invitations';
+import { getAllPets } from '../api/pets';
+import { sendMessage } from '../api/messages';
 import InvitationCard from '../components/InvitationCard';
 import { Inbox, Send, X, PawPrint, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -14,12 +17,11 @@ const activityLabelMap: Record<string, string> = {
 };
 
 export default function InvitationsPage() {
-  initInteractionData();
-  const currentUser = getCurrentUser();
-  const nearbyPets = getNearbyPets();
   const navigate = useNavigate();
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'received' | 'sent'>('received');
-  const [invitations, setInvitations] = useState<Invitation[]>(() => getAllInvitations());
+  const [invitations, setInvitations] = useState<Invitation[]>([]);
+  const [nearbyPets, setNearbyPets] = useState<PetProfile[]>([]);
   const [showNewInvite, setShowNewInvite] = useState(false);
   const [newInviteTarget, setNewInviteTarget] = useState<PetProfile | null>(null);
   const [newInviteForm, setNewInviteForm] = useState({
@@ -28,75 +30,129 @@ export default function InvitationsPage() {
     activityType: 'walk',
     message: '',
   });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  // 当当前用户变化时，重新加载邀约数据
   useEffect(() => {
-    setInvitations(getAllInvitations());
-    setShowNewInvite(false);
-    setNewInviteTarget(null);
-  }, [currentUser.id]);
+    async function loadData() {
+      try {
+        const user = await getCurrentUser();
+        if (!user) {
+          setLoading(false);
+          return;
+        }
+        setCurrentUser(user);
+        const [invites, pets] = await Promise.all([
+          getUserInvitations(user.id),
+          getAllPets(),
+        ]);
+        setInvitations(invites);
+        setNearbyPets(pets.filter(p => p.ownerId !== user.id));
+        setLoading(false);
+      } catch (err: any) {
+        setError(err.message || '加载失败');
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, []);
 
   // Helper to find pet by id across all pets
   const findPet = (petId: string): PetProfile | undefined => {
-    const myPet = currentUser.pets.find((p) => p.id === petId);
+    const myPet = currentUser?.pets?.find((p: PetProfile) => p.id === petId);
     if (myPet) return myPet;
     return nearbyPets.find((p) => p.id === petId);
   };
 
-  const received = invitations.filter((inv) => inv.toUserId === currentUser.id);
-  const sent = invitations.filter((inv) => inv.fromUserId === currentUser.id);
+  const received = invitations.filter((inv) => inv.toUserId === currentUser?.id);
+  const sent = invitations.filter((inv) => inv.fromUserId === currentUser?.id);
 
-  const handleAccept = (id: string) => {
-    setInvitations((prev) => {
-      const updated = prev.map((inv) =>
-        inv.id === id
-          ? { ...inv, status: 'accepted' as const, respondedAt: new Date().toISOString() }
-          : inv
+  const handleAccept = async (id: string) => {
+    try {
+      await updateInvitationStatus(id, 'accepted');
+      setInvitations((prev) =>
+        prev.map((inv) =>
+          inv.id === id
+            ? { ...inv, status: 'accepted' as const, respondedAt: new Date().toISOString() }
+            : inv
+        )
       );
-      saveAllInvitations(updated);
-      return updated;
-    });
+    } catch (err: any) {
+      setError(err.message || '操作失败');
+    }
   };
 
-  const handleReject = (id: string) => {
-    setInvitations((prev) => {
-      const updated = prev.map((inv) =>
-        inv.id === id
-          ? { ...inv, status: 'rejected' as const, respondedAt: new Date().toISOString() }
-          : inv
+  const handleReject = async (id: string) => {
+    try {
+      await updateInvitationStatus(id, 'rejected');
+      setInvitations((prev) =>
+        prev.map((inv) =>
+          inv.id === id
+            ? { ...inv, status: 'rejected' as const, respondedAt: new Date().toISOString() }
+            : inv
+        )
       );
-      saveAllInvitations(updated);
-      return updated;
-    });
+    } catch (err: any) {
+      setError(err.message || '操作失败');
+    }
   };
 
-  const handleNewInvite = (e: React.FormEvent) => {
+  const handleNewInvite = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newInviteTarget) return;
+    if (!newInviteTarget || !currentUser) return;
 
-    // 使用统一函数同时创建邀约和消息
-    const newInv = sendInvitationWithMessage({
-      fromUserId: currentUser.id,
-      toUserId: newInviteTarget.ownerId,
-      fromPetId: currentUser.pets[0]?.id || '',
-      toPetId: newInviteTarget.id,
-      proposedTime: newInviteForm.time,
-      proposedLocation: newInviteForm.location,
-      activityType: newInviteForm.activityType,
-      message: newInviteForm.message,
-    });
+    try {
+      const newInv = await createInvitation({
+        fromUserId: currentUser.id,
+        toUserId: newInviteTarget.ownerId,
+        fromPetId: currentUser.pets[0]?.id || '',
+        toPetId: newInviteTarget.id,
+        proposedTime: newInviteForm.time,
+        proposedLocation: newInviteForm.location,
+        activityType: newInviteForm.activityType,
+        message: newInviteForm.message,
+      });
 
-    setInvitations((prev) => {
-      const updated = [newInv, ...prev];
-      saveAllInvitations(updated);
-      return updated;
-    });
-    setShowNewInvite(false);
-    setNewInviteTarget(null);
-    setNewInviteForm({ time: '', location: '', activityType: 'walk', message: '' });
+      await sendMessage({
+        senderId: currentUser.id,
+        receiverId: newInviteTarget.ownerId,
+        content: newInviteForm.message || `我想邀请你和${newInviteTarget.name}一起${activityLabelMap[newInviteForm.activityType] || '活动'}`,
+      });
+
+      setInvitations((prev) => [newInv, ...prev]);
+      setShowNewInvite(false);
+      setNewInviteTarget(null);
+      setNewInviteForm({ time: '', location: '', activityType: 'walk', message: '' });
+    } catch (err: any) {
+      setError(err.message || '发送失败');
+    }
   };
 
   const displayList = activeTab === 'received' ? received : sent;
+
+  if (loading) {
+    return (
+      <div className="invitations-page container" style={{ paddingTop: 40, textAlign: 'center', color: 'var(--text-secondary)' }}>
+        加载中...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="invitations-page container" style={{ paddingTop: 40, textAlign: 'center', color: 'var(--danger)' }}>
+        {error}
+      </div>
+    );
+  }
+
+  if (!currentUser) {
+    return (
+      <div className="invitations-page container" style={{ paddingTop: 40, textAlign: 'center', color: 'var(--text-secondary)' }}>
+        请先登录
+      </div>
+    );
+  }
 
   return (
     <div className="invitations-page container">

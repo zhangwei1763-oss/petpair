@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { PetProfile } from '../types';
-import { getCurrentUser } from '../data/mockData';
+import { getCurrentUser } from '../api/auth';
 import { getMyPets, createPet, updatePet, deletePet } from '../api/pets';
-import { isSupabaseConfigured } from '../api/client';
 import PetProfileForm from '../components/PetProfileForm';
 import AIPersonalityAnalyzer from '../components/AIPersonalityAnalyzer';
 import type { AIPersonalityAnalysis } from '../api/ai';
@@ -17,24 +16,52 @@ const personalityLabelMap: Record<string, string> = {
 };
 
 export default function PetProfilePage() {
-  const currentUser = getCurrentUser();
-  const [pets, setPets] = useState<PetProfile[]>(currentUser.pets);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [pets, setPets] = useState<PetProfile[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [editingPet, setEditingPet] = useState<PetProfile | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [analyzingPetId, setAnalyzingPetId] = useState<string | null>(null);
 
+  // 加载当前用户
+  useEffect(() => {
+    let cancelled = false;
+    getCurrentUser()
+      .then((user) => {
+        if (!cancelled) setCurrentUser(user);
+      })
+      .catch(() => {
+        if (!cancelled) setError('加载用户信息失败');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // 从 API 加载宠物列表
   useEffect(() => {
-    if (isSupabaseConfigured) {
-      // Supabase 模式下需要 user.id，从 localStorage 或全局状态获取
-      // 这里通过 currentUser.id 作为 fallback
-      const userId = getCurrentUser().id;
-      if (userId) {
-        getMyPets(userId).then(setPets);
-      }
-    }
-  }, [isSupabaseConfigured]);
+    if (!currentUser?.id) return;
+    let cancelled = false;
+    setLoading(true);
+    getMyPets(currentUser.id)
+      .then((data) => {
+        if (!cancelled) {
+          setPets(data);
+          setError('');
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setError('加载宠物列表失败');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser]);
 
   const showSuccess = (msg: string) => {
     setSuccessMsg(msg);
@@ -42,57 +69,31 @@ export default function PetProfilePage() {
   };
 
   const handleSave = async (data: Partial<PetProfile>) => {
-    if (isSupabaseConfigured) {
+    try {
       if (editingPet) {
         const updated = await updatePet(editingPet.id, data);
-        setPets(prev => prev.map(p => p.id === updated.id ? updated : p));
+        setPets((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
       } else {
         const created = await createPet(data);
-        setPets(prev => [...prev, created]);
+        setPets((prev) => [...prev, created]);
       }
-    } else {
-      // Mock 模式
-      if (editingPet) {
-        setPets((prev) =>
-          prev.map((p) => (p.id === editingPet.id ? { ...p, ...data } : p))
-        );
-      } else {
-        const newPet: PetProfile = {
-          id: `pet_${Date.now()}`,
-          ownerId: getCurrentUser().id,
-          name: data.name || '',
-          breed: data.breed || '',
-          species: data.species || 'dog',
-          age: data.age || 0,
-          gender: data.gender || 'male',
-          weight: data.weight || 0,
-          size: data.size || 'medium',
-          neutered: data.neutered || false,
-          personalityTags: data.personalityTags || [],
-          energyLevel: data.energyLevel || 'medium',
-          activityPreferences: data.activityPreferences || [],
-          socialPreferences: data.socialPreferences || [],
-          vaccineStatus: data.vaccineStatus || 'up_to_date',
-          photos: data.photos && data.photos.length > 0
-            ? data.photos
-            : ['https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=400&h=400&fit=crop'],
-          bio: data.bio || '',
-        };
-        setPets((prev) => [...prev, newPet]);
-      }
+      setEditingPet(null);
+      setIsAdding(false);
+      showSuccess('保存成功！');
+    } catch {
+      setError('保存失败，请重试');
     }
-    setEditingPet(null);
-    setIsAdding(false);
-    showSuccess('保存成功！');
   };
 
   const handleDelete = async (petId: string) => {
     if (confirm('确定要删除这个宠物档案吗？')) {
-      if (isSupabaseConfigured) {
+      try {
         await deletePet(petId);
+        setPets((prev) => prev.filter((p) => p.id !== petId));
+        showSuccess('已删除');
+      } catch {
+        setError('删除失败，请重试');
       }
-      setPets((prev) => prev.filter((p) => p.id !== petId));
-      showSuccess('已删除');
     }
   };
 
@@ -139,6 +140,14 @@ export default function PetProfilePage() {
     setAnalyzingPetId(null);
   };
 
+  if (loading) {
+    return (
+      <div className="pet-profile-page container" style={{ paddingTop: 40, textAlign: 'center' }}>
+        加载中...
+      </div>
+    );
+  }
+
   return (
     <div className="pet-profile-page container">
       <div className="pet-profile-page__header">
@@ -154,6 +163,12 @@ export default function PetProfilePage() {
           添加新宠物
         </button>
       </div>
+
+      {error && (
+        <div className="pet-profile-page__error">
+          {error}
+        </div>
+      )}
 
       {successMsg && (
         <div className="pet-profile-page__success">
@@ -288,6 +303,17 @@ export default function PetProfilePage() {
         .pet-profile-page__success {
           padding: 12px 16px;
           background: var(--success);
+          color: #fff;
+          border-radius: var(--radius-sm);
+          font-size: 14px;
+          font-weight: 600;
+          margin-bottom: 20px;
+          text-align: center;
+          animation: fadeIn var(--transition-normal) ease;
+        }
+        .pet-profile-page__error {
+          padding: 12px 16px;
+          background: var(--danger);
           color: #fff;
           border-radius: var(--radius-sm);
           font-size: 14px;

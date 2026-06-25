@@ -2,43 +2,18 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Lock, LogIn, Mail, Eye, EyeOff } from 'lucide-react';
 import { signInWithEmail } from '../api/auth';
-import { isSupabaseConfigured } from '../api/client';
-import { getAllUsers, setCurrentUser } from '../data/mockData';
 
-interface LoginPageProps {
-  onLogin: (userData?: { name: string; email: string }, selectedUserId?: string) => void;
-}
-
-export default function LoginPage({ onLogin }: LoginPageProps) {
+export default function LoginPage() {
   const navigate = useNavigate();
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  // Supabase 邮箱+密码登录/注册
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  // Mock 模式用户名密码
-  const [mockUsername, setMockUsername] = useState('');
-  const [mockPassword, setMockPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  const mockUsers = getAllUsers();
-
-  // 预置用户邮箱密码映射
-  const mockCredentials: Record<string, string> = {
-    'linxiaomeng@petpair.com': 'user_001',
-    'chendawei@petpair.com': 'user_002',
-    'wangxiaoya@petpair.com': 'user_003',
-  };
-
-  // Supabase 邮箱+密码登录/注册
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-
-    if (!isSupabaseConfigured) {
-      onLogin();
-      return;
-    }
 
     if (!email.trim() || !password.trim()) {
       setError('请输入邮箱和密码');
@@ -48,64 +23,19 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     setLoading(true);
     try {
       await signInWithEmail(email, password);
-      onLogin();
       navigate('/dashboard');
     } catch (err: any) {
-      setError(err.message || '操作失败');
+      setError(err.message || '登录失败');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleWechatLogin = async () => {
-    setLoading(true);
-    await new Promise((r) => setTimeout(r, 600));
-    setLoading(false);
-    onLogin();
-    navigate('/dashboard');
-  };
-
-  // Mock 模式用户名密码登录
-  const handleMockLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-
-    const emailInput = mockUsername.trim().toLowerCase();
-    const pwd = mockPassword.trim();
-
-    if (!emailInput || !pwd) {
-      setError('请输入邮箱和密码');
-      return;
-    }
-
-    // 邮箱格式校验
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(emailInput)) {
-      setError('请输入正确的邮箱格式');
-      return;
-    }
-
-    // 验证邮箱是否存在
-    const userId = mockCredentials[emailInput];
-    if (!userId) {
-      setError('账号不存在');
-      return;
-    }
-
-    // 密码统一为 123456
-    if (pwd !== '123456') {
-      setError('密码错误');
-      return;
-    }
-
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      setCurrentUser(userId);
-      onLogin(undefined, userId);
-      navigate('/dashboard');
-    }, 600);
-  };
+  const demoAccounts = [
+    { name: '林小萌', email: 'linxiaomeng@petpair.com', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100' },
+    { name: '陈大伟', email: 'chendawei@petpair.com', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100' },
+    { name: '王小雅', email: 'wangxiaoya@petpair.com', avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100' },
+  ];
 
   return (
     <div className="login-page">
@@ -125,211 +55,92 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           <p className="login-page__subtitle">登录 PetPair，为宠物找玩伴</p>
         </div>
 
-        {isSupabaseConfigured ? (
-          /* Supabase 邮箱+密码登录/注册表单 */
-          <form className="login-page__form" onSubmit={handleEmailSubmit}>
-            <div className="form-group">
-              <label>邮箱</label>
-              <div className="login-page__input-wrapper">
-                <Mail size={18} className="login-page__input-icon" />
-                <input
-                  className="form-input login-page__input"
-                  type="email"
-                  placeholder="请输入邮箱"
-                  value={email}
-                  onChange={(e) => {
-                    setEmail(e.target.value);
-                    if (error) setError('');
-                  }}
-                />
-              </div>
+        <form className="login-page__form" onSubmit={handleEmailSubmit}>
+          <div className="form-group">
+            <label>邮箱</label>
+            <div className="login-page__input-wrapper">
+              <Mail size={18} className="login-page__input-icon" />
+              <input
+                className="form-input login-page__input"
+                type="email"
+                placeholder="请输入邮箱"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (error) setError('');
+                }}
+              />
             </div>
+          </div>
 
-            <div className="form-group">
-              <label>密码</label>
-              <div className="login-page__input-wrapper">
-                <Lock size={18} className="login-page__input-icon" />
-                <input
-                  className="form-input login-page__input"
-                  type="password"
-                  placeholder="请输入密码"
-                  value={password}
-                  onChange={(e) => {
-                    setPassword(e.target.value);
-                    if (error) setError('');
-                  }}
-                />
-              </div>
+          <div className="form-group">
+            <label>密码</label>
+            <div className="login-page__input-wrapper">
+              <Lock size={18} className="login-page__input-icon" />
+              <input
+                className="form-input login-page__input"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="请输入密码"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (error) setError('');
+                }}
+              />
+              <button
+                type="button"
+                className="login-page__eye-btn"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
+          </div>
 
-            {error && (
-              <p className="login-page__error">{error}</p>
+          {error && (
+            <p className="login-page__error">{error}</p>
+          )}
+
+          <button
+            type="submit"
+            className="btn btn-primary btn-lg login-page__submit"
+            disabled={loading}
+          >
+            {loading ? (
+              <span className="login-page__loading" />
+            ) : (
+              <LogIn size={18} />
             )}
+            {loading ? '处理中...' : '登录'}
+          </button>
 
-            <button
-              type="submit"
-              className="btn btn-primary btn-lg login-page__submit"
-              disabled={loading}
-            >
-              {loading ? (
-                <span className="login-page__loading" />
-              ) : (
-                <LogIn size={18} />
-              )}
-              {loading ? '处理中...' : '登录'}
-            </button>
-
-            <div className="login-page__demo-accounts">
-              <p className="login-page__demo-title">演示账号（快捷登录）</p>
-              <div className="login-page__demo-list">
-                {mockUsers.map((user) => (
-                  <div
-                    key={user.id}
-                    className="login-page__demo-item"
-                    onClick={() => {
-                      const emailMap: Record<string, string> = {
-                        'user_001': 'linxiaomeng@petpair.com',
-                        'user_002': 'chendawei@petpair.com',
-                        'user_003': 'wangxiaoya@petpair.com',
-                      };
-                      const demoEmail = emailMap[user.id] || '';
-                      setEmail(demoEmail);
-                      setPassword('123456');
-                      if (error) setError('');
-                      // 自动触发 Supabase 登录
-                      if (isSupabaseConfigured) {
-                        setLoading(true);
-                        setTimeout(() => {
-                          setLoading(false);
-                          const demoUid = mockCredentials[demoEmail];
-                          if (demoUid) {
-                            setCurrentUser(demoUid);
-                            onLogin(undefined, demoUid);
-                            navigate('/dashboard');
-                          }
-                        }, 600);
-                      }
-                    }}
-                  >
-                    <img className="login-page__demo-avatar" src={user.avatar} alt={user.name} />
-                    <div className="login-page__demo-info">
-                      <span className="login-page__demo-name">{user.name}</span>
-                      <span className="login-page__demo-cred">
-                        {user.id === 'user_001' ? 'linxiaomeng@petpair.com' : user.id === 'user_002' ? 'chendawei@petpair.com' : 'wangxiaoya@petpair.com'} / 123456
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </form>
-        ) : (
-          /* Mock 模式：邮箱密码登录 */
-          <form className="login-page__form" onSubmit={handleMockLogin}>
-            <div className="form-group">
-              <label>邮箱</label>
-              <div className="login-page__input-wrapper">
-                <Mail size={18} className="login-page__input-icon" />
-                <input
-                  className="form-input login-page__input"
-                  type="email"
-                  placeholder="请输入邮箱"
-                  value={mockUsername}
-                  onChange={(e) => {
-                    setMockUsername(e.target.value);
+          <div className="login-page__demo-accounts">
+            <p className="login-page__demo-title">演示账号（点击快速填充）</p>
+            <div className="login-page__demo-list">
+              {demoAccounts.map((account) => (
+                <div
+                  key={account.email}
+                  className="login-page__demo-item"
+                  onClick={() => {
+                    setEmail(account.email);
+                    setPassword('123456');
                     if (error) setError('');
                   }}
-                />
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label>密码</label>
-              <div className="login-page__input-wrapper">
-                <Lock size={18} className="login-page__input-icon" />
-                <input
-                  className="form-input login-page__input"
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="请输入密码"
-                  value={mockPassword}
-                  onChange={(e) => {
-                    setMockPassword(e.target.value);
-                    if (error) setError('');
-                  }}
-                />
-                <button
-                  type="button"
-                  className="login-page__eye-btn"
-                  onClick={() => setShowPassword(!showPassword)}
                 >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
-
-            {error && (
-              <p className="login-page__error">{error}</p>
-            )}
-
-            <button
-              type="submit"
-              className="btn btn-primary btn-lg login-page__submit"
-              disabled={loading}
-            >
-              {loading ? (
-                <span className="login-page__loading" />
-              ) : (
-                <LogIn size={18} />
-              )}
-              {loading ? '登录中...' : '登录'}
-            </button>
-
-            <div className="login-page__demo-accounts">
-              <p className="login-page__demo-title">演示账号</p>
-              <div className="login-page__demo-list">
-                {mockUsers.map((user) => (
-                  <div
-                    key={user.id}
-                    className="login-page__demo-item"
-                    onClick={() => {
-                      const emailMap: Record<string, string> = {
-                        'user_001': 'linxiaomeng@petpair.com',
-                        'user_002': 'chendawei@petpair.com',
-                        'user_003': 'wangxiaoya@petpair.com',
-                      };
-                      setMockUsername(emailMap[user.id] || '');
-                      setMockPassword('123456');
-                      if (error) setError('');
-                    }}
-                  >
-                    <img className="login-page__demo-avatar" src={user.avatar} alt={user.name} />
-                    <div className="login-page__demo-info">
-                      <span className="login-page__demo-name">{user.name}</span>
-                      <span className="login-page__demo-cred">
-                        {user.id === 'user_001' ? 'linxiaomeng@petpair.com' : user.id === 'user_002' ? 'chendawei@petpair.com' : 'wangxiaoya@petpair.com'} / 123456
-                      </span>
-                    </div>
+                  <img className="login-page__demo-avatar" src={account.avatar} alt={account.name} />
+                  <div className="login-page__demo-info">
+                    <span className="login-page__demo-name">{account.name}</span>
+                    <span className="login-page__demo-cred">{account.email} / 123456</span>
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
             </div>
-          </form>
-        )}
+          </div>
+        </form>
 
         <div className="login-page__divider">
           <span>或</span>
         </div>
-
-        <button
-          className="btn btn-outline btn-lg login-page__wechat"
-          onClick={handleWechatLogin}
-          disabled={loading}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.596-6.348zM5.785 5.991c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178A1.17 1.17 0 0 1 4.623 7.17c0-.651.52-1.18 1.162-1.18zm5.813 0c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178 1.17 1.17 0 0 1-1.162-1.178c0-.651.52-1.18 1.162-1.18zm3.2 4.986c-3.797 0-6.874 2.605-6.874 5.82 0 3.215 3.077 5.82 6.874 5.82.726 0 1.428-.098 2.086-.272a.723.723 0 0 1 .598.082l1.578.924a.27.27 0 0 0 .14.045.244.244 0 0 0 .24-.245c0-.06-.024-.118-.04-.177l-.323-1.227a.49.49 0 0 1 .177-.552C21.855 19.832 23 18.074 23 16.797c0-3.215-3.077-5.82-6.874-5.82h-.328zm-2.614 3.282c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.97-.982zm4.943 0c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.97-.982z" />
-          </svg>
-          使用微信登录
-        </button>
 
         <div className="login-page__footer">
           <span>还没有账号？</span>
@@ -391,18 +202,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         }
         .login-page__input {
           padding-left: 40px !important;
-        }
-        .login-page__code-btn {
-          position: absolute;
-          right: 4px;
-          white-space: nowrap;
-          flex-shrink: 0;
-          min-width: 100px;
-          font-size: 12px !important;
-        }
-        .login-page__code-btn:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
+          padding-right: 40px !important;
         }
         .login-page__error {
           color: var(--danger);
@@ -452,19 +252,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           height: 1px;
           background: var(--border);
         }
-        .login-page__wechat {
-          width: 100%;
-          color: #07c160;
-          border-color: #07c160;
-        }
-        .login-page__wechat:hover:not(:disabled) {
-          background: #07c160;
-          color: #fff;
-        }
-        .login-page__wechat:disabled {
-          opacity: 0.7;
-          cursor: not-allowed;
-        }
         .login-page__footer {
           text-align: center;
           margin-top: 24px;
@@ -494,8 +281,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         .login-page__hint a:hover {
           text-decoration: underline;
         }
-
-        /* ===== 演示账号样式 ===== */
         .login-page__eye-btn {
           position: absolute;
           right: 12px;
