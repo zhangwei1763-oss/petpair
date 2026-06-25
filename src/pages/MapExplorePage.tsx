@@ -4,7 +4,7 @@ import { getAllPets, getMyPets } from '../api/pets';
 import type { PetProfile } from '../types';
 import { calculateAdvancedMatchScore, getMatchLabel, getCompatibilityAdvice } from '../utils/matchEngine';
 import { generateMatchExplanation } from '../api/ai';
-import { loadAMapAPI, isAMapConfigured } from '../utils/amapLoader';
+
 import {
   MapPin,
   Navigation,
@@ -54,8 +54,8 @@ export default function MapExplorePage() {
   const [mapReady, setMapReady] = useState(false);
   const [mapError, setMapError] = useState('');
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<AMap.Map | null>(null);
-  const markersRef = useRef<AMap.Marker[]>([]);
+  const mapInstanceRef = useRef<any>(null);
+  const markersRef = useRef<any[]>([]);
 
   const [pets, setPets] = useState<PetProfile[]>([]);
   const [myPet, setMyPet] = useState<PetProfile | null>(null);
@@ -220,34 +220,60 @@ export default function MapExplorePage() {
     health: '健康',
   };
 
-  // === 高德地图初始化 ===
+  // === Leaflet 地图初始化 ===
   useEffect(() => {
-    if (activeTab !== 'map' || !mapContainerRef.current) return;
-    if (!isAMapConfigured()) {
-      setMapError('地图服务未配置');
-      return;
-    }
+    if (activeTab !== 'map') return;
 
     let destroyed = false;
 
+    const loadLeaflet = (): Promise<void> => new Promise((resolve, reject) => {
+      if ((window as any).L) { resolve(); return; }
+      const timeout = setTimeout(() => reject(new Error('Leaflet 加载超时')), 10000);
+
+      // 加载 CSS
+      if (!document.querySelector('link[href*="leaflet"]')) {
+        const css = document.createElement('link');
+        css.rel = 'stylesheet';
+        css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+        document.head.appendChild(css);
+      }
+
+      // 加载 JS
+      const script = document.createElement('script');
+      script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+      script.onload = () => { clearTimeout(timeout); resolve(); };
+      script.onerror = () => { clearTimeout(timeout); reject(new Error('Leaflet JS 加载失败')); };
+      document.head.appendChild(script);
+    });
+
     const initMap = async () => {
       try {
-        await loadAMapAPI();
+        await loadLeaflet();
+        if (destroyed) return;
+
+        // 等待 DOM 就绪
+        const waitForContainer = () => new Promise<void>((resolve) => {
+          if (mapContainerRef.current) { resolve(); return; }
+          let tries = 0;
+          const check = setInterval(() => {
+            tries++;
+            if (mapContainerRef.current || tries > 50) {
+              clearInterval(check);
+              resolve();
+            }
+          }, 100);
+        });
+        await waitForContainer();
+
         if (destroyed || !mapContainerRef.current) return;
 
-        const map = new AMap.Map(mapContainerRef.current, {
-          zoom: 14,
-          center: [CENTER_LNG, CENTER_LAT],
-          viewMode: '2D',
-          mapStyle: 'amap://styles/fresh',
-          resizeEnable: true,
-        });
+        const L = (window as any).L;
 
-        // 添加比例尺和工具栏
-        AMap.plugin(['AMap.Scale', 'AMap.ToolBar'], () => {
-          map.addControl(new AMap.Scale());
-          map.addControl(new AMap.ToolBar({ position: 'RT' }));
-        });
+        const map = L.map(mapContainerRef.current).setView([CENTER_LAT, CENTER_LNG], 14);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
 
         mapInstanceRef.current = map;
         if (!destroyed) setMapReady(true);
@@ -273,22 +299,25 @@ export default function MapExplorePage() {
     const map = mapInstanceRef.current;
     if (!map || !mapReady) return;
 
+    const L = (window as any).L;
+
     // 清除旧标记
-    markersRef.current.forEach((m) => map.remove(m));
+    markersRef.current.forEach((m: any) => map.removeLayer(m));
     markersRef.current = [];
 
     // 添加我的位置标记
-    const myMarker = new AMap.Marker({
-      position: [CENTER_LNG, CENTER_LAT],
-      content: `<div style="
-        width:16px;height:16px;border-radius:50%;
-        background:#1890ff;border:3px solid #fff;
-        box-shadow:0 2px 8px rgba(24,144,255,0.5);
-      "></div>`,
-      offset: new AMap.Pixel(-8, -8),
-      zIndex: 100,
-    });
-    map.add(myMarker);
+    const myMarker = L.marker([CENTER_LAT, CENTER_LNG], {
+      icon: L.divIcon({
+        className: 'my-pet-marker',
+        html: `<div style="
+          width:16px;height:16px;border-radius:50%;
+          background:#4F46E5;border:3px solid #fff;
+          box-shadow:0 2px 6px rgba(0,0,0,0.3);
+        "></div>`,
+        iconSize: [16, 16],
+        iconAnchor: [8, 8],
+      })
+    }).addTo(map);
     markersRef.current.push(myMarker);
 
     // 添加宠物标记
@@ -297,8 +326,8 @@ export default function MapExplorePage() {
       if (!pos) return;
 
       const matchInfo = petMatchScores[pet.id];
-      const markerColor = matchInfo ? matchInfo.color : getMarkerColor(pet.species);
       const score = matchInfo?.score || 0;
+      const markerColor = score >= 90 ? '#52c41a' : score >= 70 ? '#1890ff' : score >= 50 ? '#faad14' : '#ff4d4f';
 
       const markerHtml = `
         <div style="display:flex;flex-direction:column;align-items:center;cursor:pointer;">
@@ -327,21 +356,26 @@ export default function MapExplorePage() {
         </div>
       `;
 
-      const marker = new AMap.Marker({
-        position: [pos.lng, pos.lat],
-        content: markerHtml,
-        offset: new AMap.Pixel(-18, -18),
-        zIndex: score >= 80 ? 50 : 10,
-      });
+      const marker = L.marker([pos.lat, pos.lng], {
+        icon: L.divIcon({
+          className: 'pet-marker',
+          html: markerHtml,
+          iconSize: [36, 36],
+          iconAnchor: [18, 18],
+        })
+      }).addTo(map);
 
-      marker.on('click', () => setSelectedPetId(pet.id));
-      map.add(marker);
+      marker.on('click', () => {
+        setSelectedPetId(pet.id);
+        map.setView([pos.lat, pos.lng], 15, { animate: true });
+      });
       markersRef.current.push(marker);
     });
 
     // 自适应视野
     if (markersRef.current.length > 1) {
-      map.setFitView(markersRef.current);
+      const group = L.featureGroup(markersRef.current);
+      map.fitBounds(group.getBounds().pad(0.1));
     }
   }, [filteredPets, petMatchScores, mapReady]);
 
@@ -482,7 +516,7 @@ export default function MapExplorePage() {
       {/* ============================== TAB: 地图模式 ============================== */}
       {activeTab === 'map' && (
         <>
-          {/* 高德真实地图 */}
+          {/* Leaflet 地图 */}
           <div className="map-explore-page__map">
             <div
               ref={mapContainerRef}
