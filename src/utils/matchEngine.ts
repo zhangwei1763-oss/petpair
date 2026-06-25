@@ -276,6 +276,7 @@ export function calculateAdvancedMatchScore(
     health: number;
   };
 } {
+  try {
   let score = 50; // 基础分从 50 开始
   const reasons: string[] = [];
 
@@ -385,6 +386,14 @@ export function calculateAdvancedMatchScore(
       health: healthScore,
     },
   };
+  } catch (err) {
+    console.error('calculateAdvancedMatchScore error:', err);
+    return {
+      score: 50,
+      reasons: ['匹配计算出错'],
+      dimensions: { personality: 50, energy: 50, size: 50, distance: 50, health: 50 },
+    };
+  }
 }
 
 /**
