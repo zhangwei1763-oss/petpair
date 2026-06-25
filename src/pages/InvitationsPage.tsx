@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { Invitation, PetProfile } from '../types';
-import { getCurrentUser, getNearbyPets, initInteractionData, getAllInvitations, saveAllInvitations } from '../data/mockData';
+import { getCurrentUser, getNearbyPets, initInteractionData, getAllInvitations, saveAllInvitations, sendInvitationWithMessage } from '../data/mockData';
 import InvitationCard from '../components/InvitationCard';
 import { Inbox, Send, X, PawPrint, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -74,19 +74,17 @@ export default function InvitationsPage() {
     e.preventDefault();
     if (!newInviteTarget) return;
 
-    const newInv: Invitation = {
-      id: `inv_${Date.now()}`,
+    // 使用统一函数同时创建邀约和消息
+    const newInv = sendInvitationWithMessage({
       fromUserId: currentUser.id,
       toUserId: newInviteTarget.ownerId,
       fromPetId: currentUser.pets[0]?.id || '',
       toPetId: newInviteTarget.id,
-      status: 'pending',
       proposedTime: newInviteForm.time,
       proposedLocation: newInviteForm.location,
       activityType: newInviteForm.activityType,
       message: newInviteForm.message,
-      createdAt: new Date().toISOString(),
-    };
+    });
 
     setInvitations((prev) => {
       const updated = [newInv, ...prev];

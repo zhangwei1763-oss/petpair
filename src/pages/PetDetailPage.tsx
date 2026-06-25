@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import type { PetProfile } from '../types';
-import { nearbyPets, getCurrentUser, getAllInvitations, saveAllInvitations } from '../data/mockData';
+import { nearbyPets, getCurrentUser, sendInvitationWithMessage } from '../data/mockData';
 import {
   ArrowLeft,
   Send,
@@ -323,22 +323,17 @@ export default function PetDetailPage() {
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                // 真正创建邀约并保存到 localStorage
-                const newInvitation = {
-                  id: `inv_${Date.now()}`,
+                // 使用统一函数同时创建邀约和消息
+                sendInvitationWithMessage({
                   fromUserId: currentUser.id,
                   toUserId: pet.ownerId,
                   fromPetId: inviteForm.selectedPetId || currentUser.pets[0]?.id || '',
                   toPetId: pet.id,
-                  status: 'pending' as const,
                   proposedTime: inviteForm.time,
                   proposedLocation: inviteForm.location,
                   activityType: inviteForm.activityType,
                   message: inviteForm.message,
-                  createdAt: new Date().toISOString(),
-                };
-                const allInvitations = getAllInvitations();
-                saveAllInvitations([newInvitation, ...allInvitations]);
+                });
                 setShowInviteModal(false);
                 setInviteForm({ time: '', location: '', activityType: 'walk', message: '', selectedPetId: '' });
               }}

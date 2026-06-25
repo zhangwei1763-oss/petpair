@@ -976,6 +976,75 @@ export function saveAllMessages(messages: Message[]) {
   }
 }
 
+// 统一邀约发送：同时创建邀约记录和消息记录
+const activityLabelMap: Record<string, string> = {
+  outdoor_run: '户外跑步',
+  walk: '散步',
+  indoor_play: '室内玩耍',
+  water: '水上活动',
+  hiking: '徒步',
+};
+
+export function sendInvitationWithMessage(params: {
+  fromUserId: string;
+  toUserId: string;
+  fromPetId: string;
+  toPetId: string;
+  proposedTime: string;
+  proposedLocation: string;
+  activityType: string;
+  message: string;
+}): Invitation {
+  const invitationId = `inv_${Date.now()}`;
+  const now = new Date().toISOString();
+
+  // 1. 创建邀约
+  const newInvitation: Invitation = {
+    id: invitationId,
+    fromUserId: params.fromUserId,
+    toUserId: params.toUserId,
+    fromPetId: params.fromPetId,
+    toPetId: params.toPetId,
+    status: 'pending',
+    proposedTime: params.proposedTime,
+    proposedLocation: params.proposedLocation,
+    activityType: params.activityType,
+    message: params.message,
+    createdAt: now,
+  };
+
+  // 保存邀约
+  const allInvitations = getAllInvitations();
+  saveAllInvitations([newInvitation, ...allInvitations]);
+
+  // 2. 构造邀约消息内容
+  const fromUser = mockUsers.find((u) => u.id === params.fromUserId);
+  const fromPet = [...(fromUser?.pets || [])].find((p) => p.id === params.fromPetId);
+  const toUser = mockUsers.find((u) => u.id === params.toUserId);
+  const toPet = [...(toUser?.pets || [])].find((p) => p.id === params.toPetId);
+  const petName = fromPet?.name || '我的宠物';
+  const targetPetName = toPet?.name || '对方宠物';
+  const activityLabel = activityLabelMap[params.activityType] || params.activityType;
+
+  const invitationMsgContent = `🐾 ${petName} 向 ${targetPetName} 发起了邀约\n活动：${activityLabel}\n时间：${params.proposedTime.replace('T', ' ')}\n地点：${params.proposedLocation}${params.message ? '\n留言：' + params.message : ''}`;
+
+  // 3. 创建关联消息（双向：从发送者发给接收者）
+  const newMsg: Message = {
+    id: `msg_${Date.now()}`,
+    senderId: params.fromUserId,
+    receiverId: params.toUserId,
+    invitationId: invitationId,
+    content: invitationMsgContent,
+    type: 'invitation',
+    createdAt: now,
+  };
+
+  const allMessages = getAllMessages();
+  saveAllMessages([newMsg, ...allMessages]);
+
+  return newInvitation;
+}
+
 // ==================== 用户统计 ====================
 
 export const mockUserStats: UserStats = {

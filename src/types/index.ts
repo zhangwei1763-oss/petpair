@@ -96,7 +96,7 @@ export interface Message {
   receiverId: string;
   invitationId?: string;       // 可选，关联邀约ID
   content: string;
-  type: 'text' | 'image' | 'location' | 'ai';  // 支持四种消息类型
+  type: 'text' | 'image' | 'location' | 'ai' | 'invitation';  // 支持多种消息类型
   createdAt: string;
   isAi?: boolean;               // AI 消息标记
   aiLoading?: boolean;         // AI 正在生成中
