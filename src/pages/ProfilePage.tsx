@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getCurrentUser, mockInvitations, mockReviews } from '../data/mockData';
+import { getCurrentUser, getUserProfile } from '../api/auth';
+import type { User } from '../types';
 import {
-  User,
+  User as UserIcon,
   Bell,
   Lock,
   Info,
@@ -35,10 +36,32 @@ type ModalType = 'editProfile' | 'notifications' | 'privacy' | 'about' | null;
 
 export default function ProfilePage({ onLogout }: { onLogout: () => void }) {
   const navigate = useNavigate();
-  const currentUser = getCurrentUser();
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
   const [activeModal, setActiveModal] = useState<ModalType>(null);
-  const [userName, setUserName] = useState(currentUser.name);
-  const [userPhone, setUserPhone] = useState(currentUser.phone);
+  const [userName, setUserName] = useState('');
+  const [userPhone, setUserPhone] = useState('');
+
+  useEffect(() => {
+    async function loadUser() {
+      try {
+        const authUser = await getCurrentUser();
+        if (authUser) {
+          const profile = await getUserProfile(authUser.id);
+          setCurrentUser(profile);
+          if (profile) {
+            setUserName(profile.name);
+            setUserPhone(profile.phone);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load user:', e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadUser();
+  }, []);
 
   // Notification settings
   const [notifSettings, setNotifSettings] = useState({
@@ -58,21 +81,23 @@ export default function ProfilePage({ onLogout }: { onLogout: () => void }) {
 
   // Calculate stats
   const totalMatches = 12;
-  const totalInvitations = mockInvitations.length;
-  const totalMeetings = mockInvitations.filter(
+  const invitations: any[] = [];
+  const reviews: any[] = [];
+  const totalInvitations = invitations.length;
+  const totalMeetings = invitations.filter(
     (inv) => inv.status === 'completed'
   ).length;
   const avgRating =
-    mockReviews.length > 0
+    reviews.length > 0
       ? (
-          mockReviews.reduce((sum, r) => {
+          reviews.reduce((sum, r) => {
             const avg =
               (r.ratings.friendliness +
                 r.ratings.punctuality +
                 r.ratings.accuracy) /
               3;
             return sum + avg;
-          }, 0) / mockReviews.length
+          }, 0) / reviews.length
         ).toFixed(1)
       : '0.0';
 
@@ -85,7 +110,7 @@ export default function ProfilePage({ onLogout }: { onLogout: () => void }) {
 
   const menuItems = [
     { icon: <Dog size={18} />, label: '宠物档案管理', action: () => navigate('/pets') },
-    { icon: <User size={18} />, label: '编辑资料', action: () => setActiveModal('editProfile') },
+    { icon: <UserIcon size={18} />, label: '编辑资料', action: () => setActiveModal('editProfile') },
     { icon: <Bell size={18} />, label: '通知设置', action: () => setActiveModal('notifications') },
     { icon: <Lock size={18} />, label: '隐私设置', action: () => setActiveModal('privacy') },
     { icon: <Info size={18} />, label: '关于我们', action: () => setActiveModal('about') },
@@ -107,6 +132,27 @@ export default function ProfilePage({ onLogout }: { onLogout: () => void }) {
   const togglePrivacy = (key: keyof typeof privacySettings) => {
     setPrivacySettings((prev) => ({ ...prev, [key]: !prev[key] }));
   };
+
+  if (loading) {
+    return (
+      <div className="profile-page container" style={{ textAlign: 'center', paddingTop: '48px' }}>
+        <div className="spinner" style={{ width: '40px', height: '40px', border: '3px solid var(--border)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto' }} />
+        <p style={{ marginTop: '16px', color: 'var(--text-secondary)' }}>加载中...</p>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
+  if (!currentUser) {
+    return (
+      <div className="profile-page container" style={{ textAlign: 'center', paddingTop: '48px' }}>
+        <p>请先登录</p>
+        <button className="btn btn-primary" onClick={() => navigate('/login')} style={{ marginTop: '16px' }}>
+          去登录
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="profile-page container">

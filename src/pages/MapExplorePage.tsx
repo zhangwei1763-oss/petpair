@@ -1,5 +1,7 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { nearbyPets, getCurrentUser } from '../data/mockData';
+import { getCurrentUser } from '../api/auth';
+import { getAllPets } from '../api/pets';
+import type { PetProfile } from '../types';
 import { calculateAdvancedMatchScore, getMatchLabel, getCompatibilityAdvice } from '../utils/matchEngine';
 import { generateMatchExplanation } from '../api/ai';
 import { loadAMapAPI, isAMapConfigured } from '../utils/amapLoader';
@@ -69,18 +71,29 @@ export default function MapExplorePage() {
   const mapInstanceRef = useRef<AMap.Map | null>(null);
   const markersRef = useRef<AMap.Marker[]>([]);
 
-  const currentUser = getCurrentUser();
-  const myPet = currentUser.pets[0];
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [pets, setPets] = useState<PetProfile[]>([]);
+
+  useEffect(() => {
+    getCurrentUser()
+      .then((user) => setCurrentUser(user))
+      .catch((err) => console.error('加载用户信息失败', err));
+    getAllPets()
+      .then((data) => setPets(data || []))
+      .catch((err) => console.error('加载宠物列表失败', err));
+  }, []);
+
+  const myPet = currentUser?.pets[0];
 
   // === 基础筛选 ===
   const baseFiltered = useMemo(() => {
-    return nearbyPets.filter((pet) => {
+    return pets.filter((pet) => {
       if (speciesFilter !== 'all' && pet.species !== speciesFilter) return false;
       const dist = distanceMap[pet.id] || 5;
       if (dist > maxDistance) return false;
       return true;
     });
-  }, [speciesFilter, maxDistance]);
+  }, [speciesFilter, maxDistance, pets]);
 
   // === 按最低匹配度筛选 ===
   const filteredPets = useMemo(() => {
@@ -118,8 +131,8 @@ export default function MapExplorePage() {
   // === 选中的宠物 ===
   const selectedPet = useMemo(() => {
     if (!selectedPetId) return null;
-    return nearbyPets.find((p) => p.id === selectedPetId) || null;
-  }, [selectedPetId]);
+    return pets.find((p) => p.id === selectedPetId) || null;
+  }, [selectedPetId, pets]);
 
   const selectedMatchScore = useMemo(() => {
     if (!selectedPet || !myPet) return null;
@@ -145,7 +158,7 @@ export default function MapExplorePage() {
       if (aiExplanations[petId] || !myPet) return;
       setLoadingAi((prev) => ({ ...prev, [petId]: true }));
       try {
-        const pet = nearbyPets.find((p) => p.id === petId);
+        const pet = pets.find((p) => p.id === petId);
         if (pet) {
           const dist = distanceMap[petId] || 5;
           const matchResult = calculateAdvancedMatchScore(myPet, pet, dist);
@@ -160,7 +173,7 @@ export default function MapExplorePage() {
         setLoadingAi((prev) => ({ ...prev, [petId]: false }));
       }
     },
-    [myPet, aiExplanations],
+    [myPet, aiExplanations, pets],
   );
 
   // === 颜色辅助函数 ===

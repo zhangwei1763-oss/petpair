@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { mockLeaderboard } from '../data/mockData';
 import {
   Trophy,
   Star,
@@ -22,33 +21,8 @@ const tabLabels: Record<TabKey, string> = {
 };
 
 // 模拟不同标签页的数据差异
-function getTabData(tab: TabKey) {
-  const base = mockLeaderboard.map((entry) => ({ ...entry }));
-  if (tab === 'monthly') {
-    // 本月排行：分数降低，排名可能变化
-    return base
-      .map((e, i) => ({
-        ...e,
-        rank: i + 1,
-        score: Math.round(e.score * 0.3),
-        meetups: Math.round(e.meetups * 0.25),
-      }))
-      .sort((a, b) => b.score - a.score)
-      .map((e, i) => ({ ...e, rank: i + 1 }));
-  }
-  if (tab === 'newcomer') {
-    // 新人榜：随机打乱，分数降低
-    return base
-      .slice(5)
-      .map((e) => ({
-        ...e,
-        score: Math.round(e.score * 0.15),
-        meetups: Math.round(e.meetups * 0.1),
-      }))
-      .sort((a, b) => b.score - a.score)
-      .map((e, i) => ({ ...e, rank: i + 1 }));
-  }
-  return base;
+function getTabData(_tab: TabKey): import('../types').LeaderboardEntry[] {
+  return [];
 }
 
 const medalColors: Record<number, { bg: string; border: string; icon: string }> = {

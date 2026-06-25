@@ -10,7 +10,6 @@ import {
   Phone,
   KeyRound,
 } from 'lucide-react';
-import { blacklistedUsers as initialBlacklist } from '../data/mockData';
 
 interface BlacklistedUser {
   id: string;
@@ -21,7 +20,7 @@ interface BlacklistedUser {
 }
 
 export default function SettingsPage(_props?: { user?: unknown; onLogout?: () => void }) {
-  const [blacklist, setBlacklist] = useState<BlacklistedUser[]>(initialBlacklist);
+  const [blacklist, setBlacklist] = useState<BlacklistedUser[]>([]);
 
   // Privacy toggles
   const [verifiedOnly, setVerifiedOnly] = useState(false);

@@ -1,6 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { nearbyPets } from '../data/mockData';
+import { getAllPets } from '../api/pets';
+import type { PetProfile } from '../types';
 import PetCard from '../components/PetCard';
 import {
   Search,
@@ -44,13 +45,29 @@ const hotSearchTags = [
 
 export default function SearchPage() {
   const navigate = useNavigate();
+  const [pets, setPets] = useState<PetProfile[]>([]);
+  const [loading, setLoading] = useState(true);
   const [keyword, setKeyword] = useState('');
   const [speciesFilter, setSpeciesFilter] = useState<string>('all');
   const [sizeFilter, setSizeFilter] = useState<string>('all');
   const [energyFilter, setEnergyFilter] = useState<string>('all');
 
+  useEffect(() => {
+    async function loadPets() {
+      try {
+        const data = await getAllPets();
+        setPets(data);
+      } catch (e) {
+        console.error('Failed to load pets:', e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadPets();
+  }, []);
+
   const filteredPets = useMemo(() => {
-    let results = nearbyPets;
+    let results = pets;
 
     // Keyword search
     if (keyword.trim()) {
@@ -82,7 +99,7 @@ export default function SearchPage() {
     }
 
     return results;
-  }, [keyword, speciesFilter, sizeFilter, energyFilter]);
+  }, [keyword, speciesFilter, sizeFilter, energyFilter, pets]);
 
   const handleHotTagClick = (tag: string) => {
     setKeyword(tag);
@@ -244,7 +261,13 @@ export default function SearchPage() {
 
         {/* Results */}
         <div className="search-page__results">
-          {filteredPets.length === 0 ? (
+          {loading ? (
+            <div className="empty-state">
+              <div className="spinner" style={{ width: '40px', height: '40px', border: '3px solid var(--border)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto' }} />
+              <h3>加载中...</h3>
+              <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+            </div>
+          ) : filteredPets.length === 0 ? (
             <div className="empty-state">
               <PawPrint size={64} />
               <h3>没有找到匹配的宠物</h3>

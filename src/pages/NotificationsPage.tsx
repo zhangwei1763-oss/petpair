@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import type { Notification } from '../types';
-import { mockNotifications } from '../data/mockData';
 import {
   Heart,
   Send,
@@ -57,7 +56,7 @@ const typeLabelMap: Record<NotifType, string> = {
 
 export default function NotificationsPage() {
   const [notifications, setNotifications] =
-    useState<Notification[]>(mockNotifications);
+    useState<Notification[]>([]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { ActivityPost } from '../types';
-import { mockActivityPosts, getCurrentUser } from '../data/mockData';
+import { getCurrentUser } from '../api/auth';
 import { getPosts, toggleLike, addComment } from '../api/posts';
 import { isSupabaseConfigured } from '../api/client';
 import {
@@ -27,30 +27,31 @@ function formatTime(dateStr: string) {
 }
 
 export default function ActivityFeedPage() {
-  const currentUser = getCurrentUser();
-  const [posts, setPosts] = useState<ActivityPost[]>(mockActivityPosts);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [posts, setPosts] = useState<ActivityPost[]>([]);
   const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [newPostContent, setNewPostContent] = useState('');
   const [newPostImages, setNewPostImages] = useState<string[]>([]);
 
-  // 从 API 加载动态列表，失败时回退到 mock 数据
+  // 异步加载当前用户
   useEffect(() => {
-    if (isSupabaseConfigured) {
-      getPosts()
-        .then((data) => {
-          // 如果 Supabase 返回数据则使用，否则保留 mock 数据
-          if (data && data.length > 0) {
-            setPosts(data);
-          }
-        })
-        .catch(() => {
-          // Supabase 查询失败时保持 mock 数据
-          console.log('Supabase 动态加载失败，使用本地数据');
-        });
-    }
-  }, [isSupabaseConfigured]);
+    getCurrentUser()
+      .then((user) => setCurrentUser(user))
+      .catch((err) => console.error('加载用户信息失败', err));
+  }, []);
+
+  // 从 API 加载动态列表
+  useEffect(() => {
+    getPosts()
+      .then((data) => {
+        setPosts(data || []);
+      })
+      .catch((err) => {
+        console.error('加载动态失败', err);
+      });
+  }, []);
 
   const handleLike = async (postId: string) => {
     if (isSupabaseConfigured) {
@@ -167,6 +168,14 @@ export default function ActivityFeedPage() {
     setNewPostImages([]);
     setShowPublishModal(false);
   };
+
+  if (!currentUser) {
+    return (
+      <div className="activity-feed-page container" style={{ paddingTop: 40, textAlign: 'center', color: 'var(--text-secondary)' }}>
+        加载中...
+      </div>
+    );
+  }
 
   return (
     <div className="activity-feed-page container">

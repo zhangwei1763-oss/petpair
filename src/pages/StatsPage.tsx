@@ -1,4 +1,3 @@
-import { mockUserStats } from '../data/mockData';
 import {
   Handshake,
   Heart,
@@ -10,7 +9,16 @@ import {
   BarChart3,
 } from 'lucide-react';
 
-const stats = mockUserStats;
+const stats: import('../types').UserStats = {
+  totalMeetups: 0,
+  totalMatches: 0,
+  totalInvitations: 0,
+  totalReviews: 0,
+  avgRating: 0,
+  thisMonthMeetups: 0,
+  weeklyTrend: [],
+  popularPets: [],
+};
 
 const statCards = [
   {

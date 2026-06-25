@@ -1,7 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import type { PetProfile } from '../types';
-import { nearbyPets, getCurrentUser, sendInvitationWithMessage } from '../data/mockData';
+import { getCurrentUser } from '../api/auth';
+import { getPetById, getMyPets } from '../api/pets';
+import { createInvitation } from '../api/invitations';
+import { sendMessage } from '../api/messages';
 import {
   ArrowLeft,
   Send,
@@ -97,23 +100,92 @@ export default function PetDetailPage() {
     message: '',
     selectedPetId: '',
   });
-  const currentUser = getCurrentUser();
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [myPets, setMyPets] = useState<PetProfile[]>([]);
+  const [pet, setPet] = useState<PetProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const pet: PetProfile | undefined = useMemo(() => {
-    // Search in nearbyPets and currentUser's pets
-    const allPets = [...nearbyPets, ...currentUser.pets];
-    return allPets.find((p) => p.id === petId);
-  }, [petId, currentUser]);
+  useEffect(() => {
+    async function loadData() {
+      try {
+        setLoading(true);
+        setError(null);
+        const user = await getCurrentUser();
+        if (!user) {
+          setError('请先登录');
+          setLoading(false);
+          return;
+        }
+        setCurrentUser(user);
 
-  const isOwnPet = pet ? currentUser.pets.some((p) => p.id === pet.id) : false;
+        const [petData, myPetsData] = await Promise.all([
+          getPetById(petId!),
+          getMyPets(user.id),
+        ]);
+        setPet(petData);
+        setMyPets(myPetsData);
+      } catch (err: any) {
+        setError(err.message || '加载失败');
+      } finally {
+        setLoading(false);
+      }
+    }
+    if (petId) {
+      loadData();
+    }
+  }, [petId]);
+
+  const isOwnPet = pet ? myPets.some((p) => p.id === pet.id) : false;
   const owner = pet ? ownerMap[pet.ownerId] : null;
 
-  if (!pet) {
+  const handleInviteSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentUser || !pet) return;
+    try {
+      const invitation = await createInvitation({
+        fromUserId: currentUser.id,
+        toUserId: pet.ownerId,
+        fromPetId: inviteForm.selectedPetId || myPets[0]?.id || '',
+        toPetId: pet.id,
+        proposedTime: inviteForm.time,
+        proposedLocation: inviteForm.location,
+        activityType: inviteForm.activityType,
+        message: inviteForm.message,
+      });
+
+      await sendMessage({
+        senderId: currentUser.id,
+        receiverId: pet.ownerId,
+        content: inviteForm.message || '发起了一个邀约',
+        type: 'invitation',
+        invitationId: invitation.id,
+      });
+
+      setShowInviteModal(false);
+      setInviteForm({ time: '', location: '', activityType: 'walk', message: '', selectedPetId: '' });
+    } catch (err: any) {
+      setError(err.message || '发送邀约失败');
+    }
+  };
+
+  if (loading) {
     return (
       <div className="pet-detail-page container">
         <div className="empty-state">
           <Heart size={64} />
-          <h3>找不到该宠物</h3>
+          <h3>加载中...</h3>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !pet) {
+    return (
+      <div className="pet-detail-page container">
+        <div className="empty-state">
+          <Heart size={64} />
+          <h3>{error || '找不到该宠物'}</h3>
           <p>宠物信息可能已被删除或ID无效</p>
           <button className="btn btn-primary" onClick={() => navigate(-1)}>
             返回
@@ -320,28 +392,15 @@ export default function PetDetailPage() {
                 </p>
               </div>
             </div>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                // 使用统一函数同时创建邀约和消息
-                sendInvitationWithMessage({
-                  fromUserId: currentUser.id,
-                  toUserId: pet.ownerId,
-                  fromPetId: inviteForm.selectedPetId || currentUser.pets[0]?.id || '',
-                  toPetId: pet.id,
-                  proposedTime: inviteForm.time,
-                  proposedLocation: inviteForm.location,
-                  activityType: inviteForm.activityType,
-                  message: inviteForm.message,
-                });
-                setShowInviteModal(false);
-                setInviteForm({ time: '', location: '', activityType: 'walk', message: '', selectedPetId: '' });
-              }}
-            >
+            <form onSubmit={handleInviteSubmit}>
               <div className="form-group">
                 <label>选择你的宠物</label>
-                <select className="form-select" value={inviteForm.selectedPetId || currentUser.pets[0]?.id || ''} onChange={(e) => setInviteForm({ ...inviteForm, selectedPetId: e.target.value })}>
-                  {getCurrentUser().pets.map((p) => (
+                <select
+                  className="form-select"
+                  value={inviteForm.selectedPetId || myPets[0]?.id || ''}
+                  onChange={(e) => setInviteForm({ ...inviteForm, selectedPetId: e.target.value })}
+                >
+                  {myPets.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name} ({p.breed})
                     </option>
@@ -350,7 +409,13 @@ export default function PetDetailPage() {
               </div>
               <div className="form-group">
                 <label>活动时间</label>
-                <input className="form-input" type="datetime-local" value={inviteForm.time} onChange={(e) => setInviteForm({ ...inviteForm, time: e.target.value })} required />
+                <input
+                  className="form-input"
+                  type="datetime-local"
+                  value={inviteForm.time}
+                  onChange={(e) => setInviteForm({ ...inviteForm, time: e.target.value })}
+                  required
+                />
               </div>
               <div className="form-group">
                 <label>活动地点</label>
@@ -365,7 +430,11 @@ export default function PetDetailPage() {
               </div>
               <div className="form-group">
                 <label>活动类型</label>
-                <select className="form-select" value={inviteForm.activityType} onChange={(e) => setInviteForm({ ...inviteForm, activityType: e.target.value })}>
+                <select
+                  className="form-select"
+                  value={inviteForm.activityType}
+                  onChange={(e) => setInviteForm({ ...inviteForm, activityType: e.target.value })}
+                >
                   {Object.entries(activityLabelMap).map(([k, v]) => (
                     <option key={k} value={k}>
                       {v}
