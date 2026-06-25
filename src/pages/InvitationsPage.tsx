@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { Invitation, PetProfile } from '../types';
 import { getCurrentUser, getNearbyPets, initInteractionData, getAllInvitations, saveAllInvitations } from '../data/mockData';
 import InvitationCard from '../components/InvitationCard';
@@ -28,6 +28,13 @@ export default function InvitationsPage() {
     activityType: 'walk',
     message: '',
   });
+
+  // 当当前用户变化时，重新加载邀约数据
+  useEffect(() => {
+    setInvitations(getAllInvitations());
+    setShowNewInvite(false);
+    setNewInviteTarget(null);
+  }, [currentUser.id]);
 
   // Helper to find pet by id across all pets
   const findPet = (petId: string): PetProfile | undefined => {

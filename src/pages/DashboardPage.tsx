@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import type { MatchResult } from '../types';
-import { getCurrentUser, getNearbyPets } from '../data/mockData';
+import { getCurrentUser, getNearbyPets, getAllInvitations, saveAllInvitations } from '../data/mockData';
 import {
   calculateAdvancedMatchScore,
   getDimensionLabel,
@@ -129,7 +129,27 @@ export default function DashboardPage() {
 
   const handleInvite = (e: React.FormEvent) => {
     e.preventDefault();
-    // Simulate sending invitation
+    if (!selectedMatch) return;
+
+    // 真正创建邀约并保存到 localStorage
+    const newInvitation = {
+      id: `inv_${Date.now()}`,
+      fromUserId: currentUser.id,
+      toUserId: selectedMatch.pet.ownerId,
+      fromPetId: selectedPet?.id || '',
+      toPetId: selectedMatch.pet.id,
+      status: 'pending' as const,
+      proposedTime: inviteForm.time,
+      proposedLocation: inviteForm.location,
+      activityType: inviteForm.activityType,
+      message: inviteForm.message,
+      createdAt: new Date().toISOString(),
+    };
+
+    const allInvitations = getAllInvitations();
+    const updated = [newInvitation, ...allInvitations];
+    saveAllInvitations(updated);
+
     setInviteSuccess(true);
     setToastVisible(true);
     setTimeout(() => {

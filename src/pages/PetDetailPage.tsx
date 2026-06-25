@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import type { PetProfile } from '../types';
-import { nearbyPets, getCurrentUser } from '../data/mockData';
+import { nearbyPets, getCurrentUser, getAllInvitations, saveAllInvitations } from '../data/mockData';
 import {
   ArrowLeft,
   Send,
@@ -90,6 +90,13 @@ export default function PetDetailPage() {
   const { petId } = useParams<{ petId: string }>();
   const navigate = useNavigate();
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteForm, setInviteForm] = useState({
+    time: '',
+    location: '',
+    activityType: 'walk',
+    message: '',
+    selectedPetId: '',
+  });
   const currentUser = getCurrentUser();
 
   const pet: PetProfile | undefined = useMemo(() => {
@@ -316,12 +323,29 @@ export default function PetDetailPage() {
             <form
               onSubmit={(e) => {
                 e.preventDefault();
+                // 真正创建邀约并保存到 localStorage
+                const newInvitation = {
+                  id: `inv_${Date.now()}`,
+                  fromUserId: currentUser.id,
+                  toUserId: pet.ownerId,
+                  fromPetId: inviteForm.selectedPetId || currentUser.pets[0]?.id || '',
+                  toPetId: pet.id,
+                  status: 'pending' as const,
+                  proposedTime: inviteForm.time,
+                  proposedLocation: inviteForm.location,
+                  activityType: inviteForm.activityType,
+                  message: inviteForm.message,
+                  createdAt: new Date().toISOString(),
+                };
+                const allInvitations = getAllInvitations();
+                saveAllInvitations([newInvitation, ...allInvitations]);
                 setShowInviteModal(false);
+                setInviteForm({ time: '', location: '', activityType: 'walk', message: '', selectedPetId: '' });
               }}
             >
               <div className="form-group">
                 <label>选择你的宠物</label>
-                <select className="form-select" defaultValue={getCurrentUser().pets[0]?.id}>
+                <select className="form-select" value={inviteForm.selectedPetId || currentUser.pets[0]?.id || ''} onChange={(e) => setInviteForm({ ...inviteForm, selectedPetId: e.target.value })}>
                   {getCurrentUser().pets.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name} ({p.breed})
@@ -331,7 +355,7 @@ export default function PetDetailPage() {
               </div>
               <div className="form-group">
                 <label>活动时间</label>
-                <input className="form-input" type="datetime-local" required />
+                <input className="form-input" type="datetime-local" value={inviteForm.time} onChange={(e) => setInviteForm({ ...inviteForm, time: e.target.value })} required />
               </div>
               <div className="form-group">
                 <label>活动地点</label>
@@ -339,12 +363,14 @@ export default function PetDetailPage() {
                   className="form-input"
                   type="text"
                   placeholder="如：滨江公园"
+                  value={inviteForm.location}
+                  onChange={(e) => setInviteForm({ ...inviteForm, location: e.target.value })}
                   required
                 />
               </div>
               <div className="form-group">
                 <label>活动类型</label>
-                <select className="form-select" defaultValue="walk">
+                <select className="form-select" value={inviteForm.activityType} onChange={(e) => setInviteForm({ ...inviteForm, activityType: e.target.value })}>
                   {Object.entries(activityLabelMap).map(([k, v]) => (
                     <option key={k} value={k}>
                       {v}
@@ -358,6 +384,8 @@ export default function PetDetailPage() {
                   className="form-textarea"
                   placeholder="说点什么..."
                   rows={3}
+                  value={inviteForm.message}
+                  onChange={(e) => setInviteForm({ ...inviteForm, message: e.target.value })}
                 />
               </div>
               <button type="submit" className="btn btn-primary pet-detail-page__submit-btn">

@@ -72,6 +72,48 @@ export default function MessagesPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const sendTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // 当当前用户变化时，重新加载会话列表
+  useEffect(() => {
+    const allMessages = getAllMessages();
+    const userMessages = allMessages.filter(
+      (msg) => msg.senderId === currentUser.id || msg.receiverId === currentUser.id
+    );
+
+    const convMap = new Map<string, Message[]>();
+    userMessages.forEach((msg) => {
+      const partnerId =
+        msg.senderId === currentUser.id ? msg.receiverId : msg.senderId;
+      if (!convMap.has(partnerId)) {
+        convMap.set(partnerId, []);
+      }
+      convMap.get(partnerId)!.push(msg);
+    });
+
+    const convs: Conversation[] = [];
+    convMap.forEach((msgs, partnerId) => {
+      const sorted = [...msgs].sort(
+        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      );
+      const last = sorted[sorted.length - 1];
+      const relatedPet = nearbyPets.find((p) => p.ownerId === partnerId);
+
+      convs.push({
+        userId: partnerId,
+        petName: relatedPet?.name || '未知宠物',
+        petPhoto: relatedPet?.photos[0] || 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=200&h=200&fit=crop',
+        messages: sorted,
+        lastMessage: last.content,
+        lastTime: last.createdAt,
+      });
+    });
+
+    setConversations(convs.sort(
+      (a, b) =>
+        new Date(b.lastTime).getTime() - new Date(a.lastTime).getTime()
+    ));
+    setActiveConv(null);
+  }, [currentUser.id]);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [activeConv?.messages.length]);

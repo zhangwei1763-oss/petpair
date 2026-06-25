@@ -35,10 +35,20 @@ export default function ActivityFeedPage() {
   const [newPostContent, setNewPostContent] = useState('');
   const [newPostImages, setNewPostImages] = useState<string[]>([]);
 
-  // 从 API 加载动态列表
+  // 从 API 加载动态列表，失败时回退到 mock 数据
   useEffect(() => {
     if (isSupabaseConfigured) {
-      getPosts().then(setPosts);
+      getPosts()
+        .then((data) => {
+          // 如果 Supabase 返回数据则使用，否则保留 mock 数据
+          if (data && data.length > 0) {
+            setPosts(data);
+          }
+        })
+        .catch(() => {
+          // Supabase 查询失败时保持 mock 数据
+          console.log('Supabase 动态加载失败，使用本地数据');
+        });
     }
   }, [isSupabaseConfigured]);
 

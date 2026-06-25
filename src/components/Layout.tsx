@@ -2,7 +2,7 @@ import React from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import {
   PawPrint, Home, Search, MessageCircle, User,
-  MapPin, Newspaper, Bell, BarChart3, Palette,
+  MapPin, Newspaper, Bell, BarChart3, Palette, Send,
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -18,7 +18,7 @@ const navLinks = [
   { label: '首页', path: '/dashboard' },
   { label: '发现', path: '/explore' },
   { label: '社区', path: '/community' },
-  { label: '排行榜', path: '/leaderboard' },
+  { label: '邀约', path: '/invitations' },
   { label: '消息', path: '/messages' },
   { label: '宠物档案', path: '/pets' },
   { label: '我的', path: '/profile' },
@@ -28,6 +28,7 @@ const tabs = [
   { label: '首页', icon: Home, path: '/dashboard' },
   { label: '发现', icon: MapPin, path: '/explore' },
   { label: '社区', icon: Newspaper, path: '/community' },
+  { label: '邀约', icon: Send, path: '/invitations' },
   { label: '消息', icon: MessageCircle, path: '/messages' },
   { label: '我的', icon: User, path: '/profile' },
 ];
