@@ -182,10 +182,6 @@ export default function MapExplorePage() {
   );
 
   // === 颜色辅助函数 ===
-  function getMarkerColor(species: string) {
-    return species === 'dog' ? '#c4785a' : '#7a9e7e';
-  }
-
   function getMatchColor(score: number) {
     if (score >= 90) return '#52c41a';
     if (score >= 70) return '#1890ff';
