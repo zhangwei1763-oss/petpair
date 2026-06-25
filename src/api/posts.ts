@@ -37,6 +37,26 @@ export async function addComment(postId: string, userId: string, content: string
   return data;
 }
 
+export async function createPost(params: {
+  author_id: string;
+  content: string;
+  images?: string[];
+  pet_id?: string;
+}): Promise<ActivityPost> {
+  const { data, error } = await supabase
+    .from('posts')
+    .insert({
+      author_id: params.author_id,
+      content: params.content,
+      images: params.images || [],
+      pet_id: params.pet_id || null,
+    })
+    .select('*, author:users(name, avatar), pet:pets(name, photos)')
+    .single();
+  if (error) throw error;
+  return mapPostFromDB(data);
+}
+
 function mapPostFromDB(row: any): ActivityPost {
   return {
     id: row.id,

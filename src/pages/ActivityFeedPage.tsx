@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import type { ActivityPost } from '../types';
-import { getCurrentUser } from '../api/auth';
-import { getPosts, toggleLike, addComment } from '../api/posts';
+import type { ActivityPost, User } from '../types';
+import { getCurrentUser, getUserProfile } from '../api/auth';
+import { getPosts, toggleLike, addComment, createPost } from '../api/posts';
 import { isSupabaseConfigured } from '../api/client';
 import {
   Heart,
@@ -28,6 +28,7 @@ function formatTime(dateStr: string) {
 
 export default function ActivityFeedPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [userProfile, setUserProfile] = useState<User | null>(null);
   const [posts, setPosts] = useState<ActivityPost[]>([]);
   const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
@@ -38,7 +39,14 @@ export default function ActivityFeedPage() {
   // 异步加载当前用户
   useEffect(() => {
     getCurrentUser()
-      .then((user) => setCurrentUser(user))
+      .then((user) => {
+        setCurrentUser(user);
+        if (user) {
+          getUserProfile(user.id)
+            .then((profile) => setUserProfile(profile))
+            .catch((err) => console.error('加载用户资料失败', err));
+        }
+      })
       .catch((err) => console.error('加载用户信息失败', err));
   }, []);
 
@@ -110,8 +118,8 @@ export default function ActivityFeedPage() {
                     {
                       id: newComment.id,
                       userId: newComment.user_id,
-                      userName: newComment.user?.name || currentUser.name,
-                      userAvatar: newComment.user?.avatar || currentUser.avatar,
+                      userName: newComment.user?.name || userProfile?.name || currentUser?.user_metadata?.name || '未知用户',
+                      userAvatar: newComment.user?.avatar || userProfile?.avatar || '',
                       content: newComment.content,
                       createdAt: newComment.created_at,
                     },
@@ -130,10 +138,10 @@ export default function ActivityFeedPage() {
                 comments: [
                   ...post.comments,
                   {
-                    id: `comment_${Date.now()}`,
-                    userId: currentUser.id,
-                    userName: currentUser.name,
-                    userAvatar: currentUser.avatar,
+                      id: `comment_${Date.now()}`,
+                      userId: currentUser.id,
+                      userName: userProfile?.name || currentUser?.user_metadata?.name || '未知用户',
+                      userAvatar: userProfile?.avatar || '',
                     content,
                     createdAt: new Date().toISOString(),
                   },
@@ -146,27 +154,42 @@ export default function ActivityFeedPage() {
     setCommentInputs((prev) => ({ ...prev, [postId]: '' }));
   };
 
-  const handlePublish = () => {
-    if (!newPostContent.trim()) return;
-    const newPost: ActivityPost = {
-      id: `post_${Date.now()}`,
-      authorId: currentUser.id,
-      authorName: currentUser.name,
-      authorAvatar: currentUser.avatar,
-      petId: currentUser.pets[0]?.id || '',
-      petName: currentUser.pets[0]?.name || '',
-      petPhoto: currentUser.pets[0]?.photos[0] || '',
-      content: newPostContent.trim(),
-      images: newPostImages,
-      likes: 0,
-      isLiked: false,
-      comments: [],
-      createdAt: new Date().toISOString(),
-    };
-    setPosts((prev) => [newPost, ...prev]);
-    setNewPostContent('');
-    setNewPostImages([]);
-    setShowPublishModal(false);
+  const handlePublish = async () => {
+    if (!newPostContent.trim() || !currentUser) return;
+    try {
+      const created = await createPost({
+        author_id: currentUser.id,
+        content: newPostContent.trim(),
+        images: newPostImages,
+        pet_id: userProfile?.pets?.[0]?.id,
+      });
+      setPosts((prev) => [created, ...prev]);
+      setNewPostContent('');
+      setNewPostImages([]);
+      setShowPublishModal(false);
+    } catch (err) {
+      console.error('发布动态失败', err);
+      // 发布失败时仍然在本地添加（降级处理）
+      const fallbackPost: ActivityPost = {
+        id: `post_${Date.now()}`,
+        authorId: currentUser.id,
+        authorName: userProfile?.name || currentUser?.user_metadata?.name || '未知用户',
+        authorAvatar: userProfile?.avatar || '',
+        petId: userProfile?.pets?.[0]?.id || '',
+        petName: userProfile?.pets?.[0]?.name || '',
+        petPhoto: userProfile?.pets?.[0]?.photos?.[0] || '',
+        content: newPostContent.trim(),
+        images: newPostImages,
+        likes: 0,
+        isLiked: false,
+        comments: [],
+        createdAt: new Date().toISOString(),
+      };
+      setPosts((prev) => [fallbackPost, ...prev]);
+      setNewPostContent('');
+      setNewPostImages([]);
+      setShowPublishModal(false);
+    }
   };
 
   if (!currentUser) {
@@ -288,8 +311,8 @@ export default function ActivityFeedPage() {
                 <div className="activity-feed-page__comment-input">
                   <img
                     className="avatar-sm"
-                    src={currentUser.avatar}
-                    alt={currentUser.name}
+                    src={userProfile?.avatar || ''}
+                    alt={userProfile?.name || currentUser?.user_metadata?.name || ''}
                   />
                   <input
                     className="form-input"
@@ -342,15 +365,15 @@ export default function ActivityFeedPage() {
             <div className="activity-feed-page__modal-author">
               <img
                 className="avatar"
-                src={currentUser.avatar}
-                alt={currentUser.name}
+                src={userProfile?.avatar || ''}
+                alt={userProfile?.name || currentUser?.user_metadata?.name || ''}
               />
               <div>
                 <span className="activity-feed-page__author-name">
-                  {currentUser.name}
+                  {userProfile?.name || currentUser?.user_metadata?.name || '未知用户'}
                 </span>
                 <span className="activity-feed-page__author-pet">
-                  {currentUser.pets[0]?.name || ''}
+                  {userProfile?.pets?.[0]?.name || ''}
                 </span>
               </div>
             </div>

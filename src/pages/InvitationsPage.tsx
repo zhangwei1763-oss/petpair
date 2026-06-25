@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import type { Invitation, PetProfile } from '../types';
 import { getCurrentUser } from '../api/auth';
 import { getUserInvitations, createInvitation, updateInvitationStatus } from '../api/invitations';
-import { getAllPets } from '../api/pets';
+import { getAllPets, getMyPets } from '../api/pets';
 import { sendMessage } from '../api/messages';
 import InvitationCard from '../components/InvitationCard';
 import { Inbox, Send, X, PawPrint, Plus } from 'lucide-react';
@@ -22,9 +22,11 @@ export default function InvitationsPage() {
   const [activeTab, setActiveTab] = useState<'received' | 'sent'>('received');
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [nearbyPets, setNearbyPets] = useState<PetProfile[]>([]);
+  const [myPets, setMyPets] = useState<PetProfile[]>([]);
   const [showNewInvite, setShowNewInvite] = useState(false);
   const [newInviteTarget, setNewInviteTarget] = useState<PetProfile | null>(null);
   const [newInviteForm, setNewInviteForm] = useState({
+    selectedPetId: '',
     time: '',
     location: '',
     activityType: 'walk',
@@ -42,12 +44,14 @@ export default function InvitationsPage() {
           return;
         }
         setCurrentUser(user);
-        const [invites, pets] = await Promise.all([
+        const [invites, pets, myPetsList] = await Promise.all([
           getUserInvitations(user.id),
           getAllPets(),
+          getMyPets(user.id),
         ]);
         setInvitations(invites);
         setNearbyPets(pets.filter(p => p.ownerId !== user.id));
+        setMyPets(myPetsList);
         setLoading(false);
       } catch (err: any) {
         setError(err.message || '加载失败');
@@ -59,7 +63,7 @@ export default function InvitationsPage() {
 
   // Helper to find pet by id across all pets
   const findPet = (petId: string): PetProfile | undefined => {
-    const myPet = currentUser?.pets?.find((p: PetProfile) => p.id === petId);
+    const myPet = myPets.find((p) => p.id === petId);
     if (myPet) return myPet;
     return nearbyPets.find((p) => p.id === petId);
   };
@@ -99,13 +103,13 @@ export default function InvitationsPage() {
 
   const handleNewInvite = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newInviteTarget || !currentUser) return;
+    if (!newInviteTarget || !currentUser || !newInviteForm.selectedPetId) return;
 
     try {
       const newInv = await createInvitation({
         fromUserId: currentUser.id,
         toUserId: newInviteTarget.ownerId,
-        fromPetId: currentUser.pets[0]?.id || '',
+        fromPetId: newInviteForm.selectedPetId,
         toPetId: newInviteTarget.id,
         proposedTime: newInviteForm.time,
         proposedLocation: newInviteForm.location,
@@ -117,12 +121,14 @@ export default function InvitationsPage() {
         senderId: currentUser.id,
         receiverId: newInviteTarget.ownerId,
         content: newInviteForm.message || `我想邀请你和${newInviteTarget.name}一起${activityLabelMap[newInviteForm.activityType] || '活动'}`,
+        invitationId: newInv.id,
+        type: 'invitation',
       });
 
       setInvitations((prev) => [newInv, ...prev]);
       setShowNewInvite(false);
       setNewInviteTarget(null);
-      setNewInviteForm({ time: '', location: '', activityType: 'walk', message: '' });
+      setNewInviteForm({ selectedPetId: '', time: '', location: '', activityType: 'walk', message: '' });
     } catch (err: any) {
       setError(err.message || '发送失败');
     }
@@ -233,7 +239,7 @@ export default function InvitationsPage() {
               </button>
             </div>
 
-            {currentUser.pets.length === 0 ? (
+            {myPets.length === 0 ? (
               <div className="invitations-page__no-pets">
                 <PawPrint size={48} />
                 <p>您还没有添加宠物</p>
@@ -291,6 +297,25 @@ export default function InvitationsPage() {
                   >
                     重新选择
                   </button>
+                </div>
+
+                <div className="form-group">
+                  <label>选择我的宠物</label>
+                  <select
+                    className="form-select"
+                    value={newInviteForm.selectedPetId}
+                    onChange={(e) =>
+                      setNewInviteForm({ ...newInviteForm, selectedPetId: e.target.value })
+                    }
+                    required
+                  >
+                    <option value="">请选择宠物</option>
+                    {myPets.map((pet) => (
+                      <option key={pet.id} value={pet.id}>
+                        {pet.name} ({pet.breed})
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="form-group">
