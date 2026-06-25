@@ -329,7 +329,7 @@ export default function MapExplorePage() {
         <div style="display:flex;flex-direction:column;align-items:center;cursor:pointer;">
           <div style="
             width:36px;height:36px;border-radius:50%;
-            background-image:url(${pet.photos[0]});
+            background-image:url(${pet.photos?.[0] || 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=100'});
             background-size:cover;background-position:center;
             border:3px solid ${markerColor};
             box-shadow:0 2px 8px rgba(0,0,0,0.3);
@@ -565,7 +565,9 @@ export default function MapExplorePage() {
             <div className="map-explore-page__list-scroll">
               {filteredPets.map((pet) => {
                 const dist = getPetDist(pet.id);
-                const matchResult = calculateAdvancedMatchScore(myPet, pet, dist);
+                const matchResult = myPet
+                  ? calculateAdvancedMatchScore(myPet, pet, dist)
+                  : { score: 0, reasons: [], dimensions: { personality: 0, energy: 0, size: 0, distance: 0, health: 0 } };
                 const { label } = getMatchLabel(matchResult.score);
                 return (
                   <div
@@ -575,7 +577,7 @@ export default function MapExplorePage() {
                   >
                     <img
                       className="map-explore-page__list-card-img"
-                      src={pet.photos[0]}
+                      src={pet.photos?.[0] || 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=100'}
                       alt={pet.name}
                     />
                     <div className="map-explore-page__list-card-info">
@@ -586,20 +588,24 @@ export default function MapExplorePage() {
                           <MapPin size={10} />
                           {dist.toFixed(1)}km
                         </span>
+                        {myPet && (
+                          <span
+                            className="map-explore-page__list-card-score"
+                            style={{ color: getMatchColor(matchResult.score) }}
+                          >
+                            <Star size={10} />
+                            {matchResult.score}分
+                          </span>
+                        )}
+                      </div>
+                      {myPet && (
                         <span
-                          className="map-explore-page__list-card-score"
+                          className="map-explore-page__list-card-label"
                           style={{ color: getMatchColor(matchResult.score) }}
                         >
-                          <Star size={10} />
-                          {matchResult.score}分
+                          {label}
                         </span>
-                      </div>
-                      <span
-                        className="map-explore-page__list-card-label"
-                        style={{ color: getMatchColor(matchResult.score) }}
-                      >
-                        {label}
-                      </span>
+                      )}
                     </div>
                     <ChevronRight size={16} className="map-explore-page__list-card-arrow" />
                   </div>
@@ -657,7 +663,7 @@ export default function MapExplorePage() {
                   <div className="map-explore-page__rec-card-top">
                     <img
                       className="map-explore-page__rec-card-img"
-                      src={pet.photos[0]}
+                      src={pet.photos?.[0] || 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=100'}
                       alt={pet.name}
                     />
                     <div className="map-explore-page__rec-card-info">
@@ -812,7 +818,7 @@ export default function MapExplorePage() {
             <div className="map-explore-page__popup-content">
               <img
                 className="map-explore-page__popup-avatar"
-                src={selectedPet.photos[0]}
+                src={selectedPet.photos?.[0] || 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=100'}
                 alt={selectedPet.name}
               />
               <div className="map-explore-page__popup-info">
