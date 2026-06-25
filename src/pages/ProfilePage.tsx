@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getCurrentUser, getUserProfile } from '../api/auth';
-import type { User } from '../types';
+import { getMyPets } from '../api/pets';
+import type { User, PetProfile } from '../types';
 import {
   User as UserIcon,
   Bell,
@@ -37,6 +38,7 @@ type ModalType = 'editProfile' | 'notifications' | 'privacy' | 'about' | null;
 export default function ProfilePage({ onLogout }: { onLogout: () => void }) {
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [myPets, setMyPets] = useState<PetProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeModal, setActiveModal] = useState<ModalType>(null);
   const [userName, setUserName] = useState('');
@@ -52,6 +54,12 @@ export default function ProfilePage({ onLogout }: { onLogout: () => void }) {
           if (profile) {
             setUserName(profile.name);
             setUserPhone(profile.phone);
+          }
+          try {
+            const pets = await getMyPets(authUser.id);
+            setMyPets(pets);
+          } catch (e) {
+            console.error('Failed to load pets:', e);
           }
         }
       } catch (e) {
@@ -166,7 +174,7 @@ export default function ProfilePage({ onLogout }: { onLogout: () => void }) {
             <h1>{userName || '用户'}</h1>
             <p className="profile-page__user-phone">{userPhone || ''}</p>
             <p className="profile-page__user-location">
-              {currentUser?.location ? `${currentUser.location.city} ${currentUser.location.district}` : '上海 徐汇区'}
+              {(currentUser as any)?.city || '上海'}
             </p>
           </div>
         </div>
@@ -185,7 +193,10 @@ export default function ProfilePage({ onLogout }: { onLogout: () => void }) {
           </button>
         </div>
         <div className="profile-page__pets">
-          {currentUser.pets.map((pet) => (
+          {myPets.length === 0 ? (
+            <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '20px' }}>暂无宠物，去添加吧</p>
+          ) : (
+            myPets.map((pet) => (
             <div key={pet.id} className="card profile-page__pet-card">
               <img
                 className="avatar"
@@ -204,7 +215,7 @@ export default function ProfilePage({ onLogout }: { onLogout: () => void }) {
                 </div>
               </div>
             </div>
-          ))}
+          )))}
         </div>
       </div>
 
