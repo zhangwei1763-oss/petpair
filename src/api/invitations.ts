@@ -71,12 +71,22 @@ export async function updateInvitationStatus(
 ): Promise<Invitation> {
   const { data, error } = await supabase
     .from('invitations')
-    .update({ status })
+    .update({ status, is_read: true })
     .eq('id', id)
     .select()
     .single();
   if (error) throw error;
   return mapInvitationFromDB(data);
+}
+
+// 标记收到的邀约为已读
+export async function markInvitationsAsRead(invitationIds: string[]): Promise<void> {
+  if (invitationIds.length === 0) return;
+  const { error } = await supabase
+    .from('invitations')
+    .update({ is_read: true })
+    .in('id', invitationIds);
+  if (error) throw error;
 }
 
 // 数据库字段映射到前端类型
@@ -94,5 +104,6 @@ function mapInvitationFromDB(row: any): Invitation {
     message: row.message || '',
     createdAt: row.created_at,
     respondedAt: row.status !== 'pending' ? row.updated_at || row.created_at : undefined,
+    isRead: row.is_read ?? false,
   };
 }

@@ -88,6 +88,7 @@ export interface Invitation {
   message: string;
   createdAt: string;
   respondedAt?: string;
+  isRead?: boolean;
 }
 
 export interface Message {

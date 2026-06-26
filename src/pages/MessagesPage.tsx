@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import type { Message, PetProfile } from '../types';
 import { getCurrentUser } from '../api/auth';
-import { getUserMessages, sendMessage } from '../api/messages';
+import { getUserMessages, sendMessage, markMessagesAsRead } from '../api/messages';
 import { getAllPets } from '../api/pets';
 import MessageBubble from '../components/MessageBubble';
 import { summonPawPal } from '../api/ai';
@@ -302,6 +302,25 @@ export default function MessagesPage() {
                 onClick={() => {
                   setActiveConv(conv);
                   setIsMobileDetail(true);
+                  // 标记该会话中收到的未读消息为已读
+                  const unreadIds = conv.messages
+                    .filter((m) => !m.isRead && m.receiverId === currentUser?.id)
+                    .map((m) => m.id);
+                  if (unreadIds.length > 0) {
+                    markMessagesAsRead(unreadIds).catch(() => {});
+                    setConversations((prev) =>
+                      prev.map((c) =>
+                        c.userId === conv.userId
+                          ? {
+                              ...c,
+                              messages: c.messages.map((m) =>
+                                unreadIds.includes(m.id) ? { ...m, isRead: true } : m
+                              ),
+                            }
+                          : c
+                      )
+                    );
+                  }
                 }}
               >
                 <img

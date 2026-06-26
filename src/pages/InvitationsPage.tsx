@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { Invitation, PetProfile } from '../types';
 import { getCurrentUser } from '../api/auth';
-import { getUserInvitations, createInvitation, updateInvitationStatus } from '../api/invitations';
+import { getUserInvitations, createInvitation, updateInvitationStatus, markInvitationsAsRead } from '../api/invitations';
 import { getAllPets, getMyPets } from '../api/pets';
 import { sendMessage } from '../api/messages';
 import InvitationCard from '../components/InvitationCard';
@@ -52,6 +52,19 @@ export default function InvitationsPage() {
         setInvitations(invites);
         setNearbyPets(pets.filter(p => p.ownerId !== user.id));
         setMyPets(myPetsList);
+
+        // 标记收到的未读邀约为已读
+        const unreadReceivedIds = invites
+          .filter((inv) => inv.toUserId === user.id && !inv.isRead && inv.status === 'pending')
+          .map((inv) => inv.id);
+        if (unreadReceivedIds.length > 0) {
+          markInvitationsAsRead(unreadReceivedIds).catch(() => {});
+          // 更新本地状态
+          invites.forEach((inv) => {
+            if (unreadReceivedIds.includes(inv.id)) inv.isRead = true;
+          });
+          setInvitations([...invites]);
+        }
         setLoading(false);
       } catch (err: any) {
         setError(err.message || '加载失败');

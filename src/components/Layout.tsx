@@ -55,7 +55,7 @@ const Layout: React.FC<LayoutProps> = (_props) => {
         ]);
         if (cancelled) return;
         const unread = (msgs || []).filter((m) => !m.isRead && m.receiverId === authUser.id).length;
-        const pending = (invites || []).filter((i) => i.status === 'pending').length;
+        const pending = (invites || []).filter((i) => i.status === 'pending' && !i.isRead).length;
         setUnreadMessages(unread);
         setPendingInvitations(pending);
       } catch {
