@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Trophy,
   Star,
@@ -10,7 +10,11 @@ import {
   ChevronUp,
   ChevronDown,
   Minus,
+  Loader2,
 } from 'lucide-react';
+import { getAllPets } from '../api/pets';
+import { getUserProfile } from '../api/auth';
+import type { LeaderboardEntry } from '../types';
 
 type TabKey = 'total' | 'monthly' | 'newcomer';
 
@@ -20,9 +24,96 @@ const tabLabels: Record<TabKey, string> = {
   newcomer: '新人榜',
 };
 
-// 模拟不同标签页的数据差异
-function getTabData(_tab: TabKey): import('../types').LeaderboardEntry[] {
-  return [];
+// 确定性伪随机：基于字符串生成固定数字
+function seededRandom(seed: string, salt: number): number {
+  let hash = 0;
+  const str = seed + String(salt);
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
+
+// 默认宠物头像（无照片时使用）
+const defaultPetAvatar = 'https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=200&h=200&fit=crop&crop=face';
+
+// 构建排行数据：基于真实宠物列表 + 确定性模拟的见面次数和评分
+async function buildLeaderboard(tab: TabKey): Promise<LeaderboardEntry[]> {
+  // 1. 获取所有宠物
+  const allPets = await getAllPets();
+  if (allPets.length === 0) return [];
+
+  // 2. 获取宠物主人信息（去重 owner_id）
+  const ownerIds = [...new Set(allPets.map((p) => p.ownerId))];
+  const ownerMap = new Map<string, string>();
+  const avatarMap = new Map<string, string>();
+
+  await Promise.all(
+    ownerIds.map(async (oid) => {
+      try {
+        const profile = await getUserProfile(oid);
+        if (profile) {
+          ownerMap.set(oid, profile.name || '未知用户');
+          avatarMap.set(oid, profile.avatar || '');
+        }
+      } catch {
+        ownerMap.set(oid, '未知用户');
+      }
+    })
+  );
+
+  // 3. 根据不同 tab 生成模拟数据
+  const entries: LeaderboardEntry[] = allPets.map((pet, idx) => {
+    const salt = tab === 'total' ? 1 : tab === 'monthly' ? 2 : 3;
+
+    // 确定性见面次数
+    const rawMeetups = seededRandom(pet.id, salt);
+    let meetups: number;
+    if (tab === 'newcomer') {
+      // 新人榜：见面次数少一些（1-8）
+      meetups = (rawMeetups % 8) + 1;
+    } else if (tab === 'monthly') {
+      // 月榜：0-15
+      meetups = rawMeetups % 16;
+    } else {
+      // 总榜：1-50
+      meetups = (rawMeetups % 50) + 1;
+    }
+
+    // 确定性评分 3.5-5.0
+    const rawRating = seededRandom(pet.id, salt + 100);
+    const rating = Math.round((3.5 + (rawRating % 150) / 100) * 10) / 10;
+
+    // 综合分数 = 见面次数 * 100 + 评分 * 200
+    const score = Math.round(meetups * 100 + rating * 200);
+
+    const petPhoto = pet.photos && pet.photos.length > 0
+      ? pet.photos[0]
+      : defaultPetAvatar;
+
+    return {
+      rank: idx + 1,
+      petId: pet.id,
+      petName: pet.name,
+      petPhoto,
+      ownerName: ownerMap.get(pet.ownerId) || '未知用户',
+      ownerAvatar: avatarMap.get(pet.ownerId) || '',
+      score,
+      meetups,
+      rating,
+      breed: pet.breed,
+    };
+  });
+
+  // 4. 按分数降序排序，分配排名
+  entries.sort((a, b) => b.score - a.score);
+  entries.forEach((e, i) => {
+    e.rank = i + 1;
+  });
+
+  return entries;
 }
 
 const medalColors: Record<number, { bg: string; border: string; icon: string }> = {
@@ -56,7 +147,26 @@ function renderStars(rating: number) {
 
 export default function LeaderboardPage() {
   const [activeTab, setActiveTab] = useState<TabKey>('total');
-  const data = getTabData(activeTab);
+  const [data, setData] = useState<LeaderboardEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    buildLeaderboard(activeTab).then((entries) => {
+      if (!cancelled) {
+        setData(entries);
+        setLoading(false);
+      }
+    }).catch(() => {
+      if (!cancelled) {
+        setData([]);
+        setLoading(false);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [activeTab]);
+
   const top3 = data.slice(0, 3);
   const rest = data.slice(3);
 
@@ -91,64 +201,83 @@ export default function LeaderboardPage() {
         ))}
       </div>
 
+      {/* 加载状态 */}
+      {loading && (
+        <div className="leaderboard-page__loading">
+          <Loader2 size={32} className="spinner" />
+          <span>加载排行榜中...</span>
+        </div>
+      )}
+
+      {/* 空状态 */}
+      {!loading && data.length === 0 && (
+        <div className="leaderboard-page__empty">
+          <Trophy size={48} color="#d9d4cc" />
+          <p>暂无排行数据</p>
+          <p className="leaderboard-page__empty-hint">还没有宠物注册，成为第一个社交达人吧</p>
+        </div>
+      )}
+
       {/* 前三名大卡片 */}
-      <div className="leaderboard-page__top3">
-        {top3.map((entry) => {
-          const medal = medalColors[entry.rank];
-          if (!medal) return null;
-          return (
-            <div
-              key={entry.petId}
-              className="leaderboard-page__top-card"
-              style={{
-                background: medal.bg,
-                borderColor: medal.border,
-              }}
-            >
-              <div className="leaderboard-page__top-card-rank">
-                {entry.rank === 1 ? (
-                  <Crown size={28} color={medal.icon} />
-                ) : (
-                  <Medal size={28} color={medal.icon} />
-                )}
-              </div>
-              <img
-                className="leaderboard-page__top-card-avatar"
-                src={entry.petPhoto}
-                alt={entry.petName}
-              />
-              <h3 className="leaderboard-page__top-card-name">{entry.petName}</h3>
-              <p className="leaderboard-page__top-card-breed">{entry.breed}</p>
-              <p className="leaderboard-page__top-card-owner">
-                <Users size={12} />
-                {entry.ownerName}
-              </p>
-              <div className="leaderboard-page__top-card-score">
-                <Trophy size={16} color={medal.icon} />
-                <span style={{ color: medal.icon, fontWeight: 700, fontSize: 20 }}>
-                  {entry.score.toLocaleString()}
-                </span>
-              </div>
-              <div className="leaderboard-page__top-card-stats">
-                <div className="leaderboard-page__top-card-stat">
-                  <span className="leaderboard-page__top-card-stat-num">{entry.meetups}</span>
-                  <span className="leaderboard-page__top-card-stat-label">见面次数</span>
+      {!loading && top3.length > 0 && (
+        <div className="leaderboard-page__top3">
+          {top3.map((entry) => {
+            const medal = medalColors[entry.rank];
+            if (!medal) return null;
+            return (
+              <div
+                key={entry.petId}
+                className="leaderboard-page__top-card"
+                style={{
+                  background: medal.bg,
+                  borderColor: medal.border,
+                }}
+              >
+                <div className="leaderboard-page__top-card-rank">
+                  {entry.rank === 1 ? (
+                    <Crown size={28} color={medal.icon} />
+                  ) : (
+                    <Medal size={28} color={medal.icon} />
+                  )}
                 </div>
-                <div className="leaderboard-page__top-card-stat">
-                  <span className="leaderboard-page__top-card-stat-num">{entry.rating}</span>
-                  <span className="leaderboard-page__top-card-stat-label">评分</span>
+                <img
+                  className="leaderboard-page__top-card-avatar"
+                  src={entry.petPhoto}
+                  alt={entry.petName}
+                />
+                <h3 className="leaderboard-page__top-card-name">{entry.petName}</h3>
+                <p className="leaderboard-page__top-card-breed">{entry.breed}</p>
+                <p className="leaderboard-page__top-card-owner">
+                  <Users size={12} />
+                  {entry.ownerName}
+                </p>
+                <div className="leaderboard-page__top-card-score">
+                  <Trophy size={16} color={medal.icon} />
+                  <span style={{ color: medal.icon, fontWeight: 700, fontSize: 20 }}>
+                    {entry.score.toLocaleString()}
+                  </span>
+                </div>
+                <div className="leaderboard-page__top-card-stats">
+                  <div className="leaderboard-page__top-card-stat">
+                    <span className="leaderboard-page__top-card-stat-num">{entry.meetups}</span>
+                    <span className="leaderboard-page__top-card-stat-label">见面次数</span>
+                  </div>
+                  <div className="leaderboard-page__top-card-stat">
+                    <span className="leaderboard-page__top-card-stat-num">{entry.rating}</span>
+                    <span className="leaderboard-page__top-card-stat-label">评分</span>
+                  </div>
+                </div>
+                <div className="leaderboard-page__top-card-stars">
+                  {renderStars(entry.rating)}
                 </div>
               </div>
-              <div className="leaderboard-page__top-card-stars">
-                {renderStars(entry.rating)}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* 其余排行列表 */}
-      {rest.length > 0 && (
+      {!loading && rest.length > 0 && (
         <div className="leaderboard-page__list">
           <div className="leaderboard-page__list-header">
             <span>排名</span>
@@ -206,6 +335,44 @@ export default function LeaderboardPage() {
         .leaderboard-page {
           padding-top: 24px;
           padding-bottom: 40px;
+        }
+
+        /* Loading */
+        .leaderboard-page__loading {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 12px;
+          padding: 60px 20px;
+          color: var(--text-secondary);
+          font-size: 14px;
+        }
+        .leaderboard-page__loading .spinner {
+          animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+
+        /* Empty */
+        .leaderboard-page__empty {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          padding: 60px 20px;
+          color: var(--text-secondary);
+          font-size: 14px;
+        }
+        .leaderboard-page__empty p {
+          margin: 0;
+        }
+        .leaderboard-page__empty-hint {
+          font-size: 12px !important;
+          color: var(--text-secondary) !important;
+          opacity: 0.7;
         }
 
         /* Header */
