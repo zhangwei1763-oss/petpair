@@ -1,8 +1,7 @@
 import type { PetProfile } from '../types';
 
-const AI_BASE_URL = import.meta.env.VITE_AI_BASE_URL || 'https://www.jiying.work/v1';
-const AI_API_KEY = import.meta.env.VITE_AI_API_KEY || '';
-const AI_MODEL = import.meta.env.VITE_AI_MODEL || 'gpt-5.5';
+const AI_BASE_URL = '/api/ai';
+const AI_MODEL = 'gpt-5.5';
 
 export interface AIPersonalityAnalysis {
   personalityTags: string[];
@@ -22,15 +21,10 @@ export interface AIChatMessage {
  * 调用 AI API 进行通用对话
  */
 export async function chatWithAI(messages: AIChatMessage[]): Promise<string> {
-  if (!AI_API_KEY) {
-    throw new Error('AI API Key 未配置');
-  }
-
   const response = await fetch(`${AI_BASE_URL}/chat/completions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${AI_API_KEY}`,
     },
     body: JSON.stringify({
       model: AI_MODEL,
@@ -316,5 +310,5 @@ ${userQuestion ? `【用户补充问题】\n${userQuestion}` : ''}
  * 检查 AI API 是否配置
  */
 export function isAIConfigured(): boolean {
-  return !!AI_API_KEY && AI_API_KEY.length > 0;
+  return true; // 通过服务器端代理，始终可用
 }
